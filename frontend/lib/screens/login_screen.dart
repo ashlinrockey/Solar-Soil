@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
+import '../providers/telemetry_provider.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -82,6 +84,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (!mounted) return;
 
       if (response.statusCode == 200 && data['success'] == true) {
+        // Store username for password change in settings
+        if (data['user'] != null && data['user']['username'] != null) {
+          context.read<TelemetryProvider>().setLoggedInUser(data['user']['username']);
+        }
         // Success — navigate to dashboard with smooth slide-up transition
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(

@@ -60,6 +60,27 @@ export const authenticateUser = async (username, plainPassword) => {
 };
 
 /**
+ * Change a user's password (requires current password verification).
+ * @param {string} username
+ * @param {string} oldPassword
+ * @param {string} newPassword
+ * @returns {{ success: boolean, message: string }}
+ */
+export const changePassword = async (username, oldPassword, newPassword) => {
+  const user = db.get('users').find({ username }).value();
+  if (!user) {
+    return { success: false, message: 'User not found.' };
+  }
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    return { success: false, message: 'Current password is incorrect.' };
+  }
+  const hashed = await bcrypt.hash(newPassword, 10);
+  db.get('users').find({ username }).assign({ password: hashed }).write();
+  return { success: true, message: 'Password updated successfully.' };
+};
+
+/**
  * Get all users (without passwords) — for admin use.
  */
 export const getAllUsers = () => {

@@ -631,6 +631,32 @@ class TelemetryProvider extends ChangeNotifier {
     return {};
   }
 
+  // ── Auth ─────────────────────────────────────────────────────────────────
+
+  String loggedInUsername = '';
+
+  void setLoggedInUser(String username) {
+    loggedInUsername = username;
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseHttpUrl/api/auth/change-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': loggedInUsername,
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+      return json.decode(res.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Cannot connect to server.'};
+    }
+  }
+
   @override
   void dispose() {
     _wsChannel?.sink.close();

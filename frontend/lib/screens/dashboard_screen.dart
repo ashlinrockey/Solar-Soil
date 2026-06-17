@@ -77,6 +77,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   String _aiKeyMasked = '';
   bool _aiEditingKey = false;
 
+  // Password change state
+  bool _passwordChangeEnabled = false;
+  final _oldPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _oldPasswordVisible = false;
+  bool _newPasswordVisible = false;
+  bool _passwordSaving = false;
+  String? _passwordStatus;
+
   // Preferences state
   String _tempUnit = 'Celsius';
   int _refreshInterval = 5;
@@ -125,6 +135,38 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     }
   }
 
+  Future<void> _changePassword(TelemetryProvider provider) async {
+    final oldPw = _oldPasswordController.text;
+    final newPw = _newPasswordController.text;
+    final confirmPw = _confirmPasswordController.text;
+
+    if (oldPw.isEmpty || newPw.isEmpty || confirmPw.isEmpty) {
+      setState(() => _passwordStatus = '✗ All fields are required.');
+      return;
+    }
+    if (newPw != confirmPw) {
+      setState(() => _passwordStatus = '✗ New passwords do not match.');
+      return;
+    }
+    if (newPw.length < 4) {
+      setState(() => _passwordStatus = '✗ Password must be at least 4 characters.');
+      return;
+    }
+
+    setState(() { _passwordSaving = true; _passwordStatus = null; });
+    final result = await provider.changePassword(oldPw, newPw);
+    setState(() {
+      _passwordSaving = false;
+      _passwordStatus = result['success'] == true ? '✓ Password updated!' : '✗ ${result['message']}';
+    });
+    if (result['success'] == true) {
+      _oldPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      setState(() => _passwordChangeEnabled = false);
+    }
+  }
+
   Future<void> _testAIConnection(TelemetryProvider provider) async {
     setState(() => _aiConfigStatus = 'Testing connection...');
     final result = await provider.testAIConnection();
@@ -153,6 +195,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     _blobController.dispose();
     _chatInputController.dispose();
     _chatScrollController.dispose();
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -4155,16 +4200,99 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       children: [
                         const Icon(Icons.lock_outlined, color: Color(0xFF00979D), size: 20),
                         const SizedBox(width: 10),
-                        const Text("Account",
+                        const Text("Change Password",
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildSettingRow("Username", "admin", Icons.person_outlined),
-                    const Divider(color: Colors.black12, height: 20),
-                    _buildSettingRow("API Key", "••••••••", Icons.vpn_key_outlined),
-                    const Divider(color: Colors.black12, height: 20),
-                    _buildSettingRow("Notifications", "Enabled", Icons.notifications_outlined),
+                    if (!_passwordChangeEnabled)
+                      Column(
+                        children: [
+                          _buildSettingRow("Username", provider.loggedInUsername.isNotEmpty ? provider.loggedInUsername : "username", Icons.person_outlined),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => setState(() => _passwordChangeEnabled = true),
+                              icon: const Icon(Icons.lock_reset_outlined, size: 16),
+                              label: const Text("Change Password", style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF00979D),
+                                side: const BorderSide(color: Color(0xFF00979D)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (_passwordChangeEnabled) ...[
+                      _buildPasswordField("Current Password", _oldPasswordController, _oldPasswordVisible, (v) => setState(() => _oldPasswordVisible = v)),
+                      const SizedBox(height: 12),
+                      _buildPasswordField("New Password", _newPasswordController, _newPasswordVisible, (v) => setState(() => _newPasswordVisible = v)),
+                      const SizedBox(height: 12),
+                      _buildPasswordField("Confirm New Password", _confirmPasswordController, false, (_) {}),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                _oldPasswordController.clear();
+                                _newPasswordController.clear();
+                                _confirmPasswordController.clear();
+                                setState(() { _passwordChangeEnabled = false; _passwordStatus = null; });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[600],
+                                side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              child: const Text("Cancel", style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _passwordSaving ? null : () => _changePassword(provider),
+                              icon: _passwordSaving
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.check, size: 16, color: Colors.white),
+                              label: Text(_passwordSaving ? "Saving..." : "Save", style: const TextStyle(fontSize: 12, color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00979D),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (_passwordStatus != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _passwordStatus!.startsWith('✓') ? Icons.check_circle_outlined : Icons.error_outline,
+                              size: 14,
+                              color: _passwordStatus!.startsWith('✓') ? const Color(0xFF10B981) : Colors.redAccent,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                _passwordStatus!.replaceFirst('✓ ', '').replaceFirst('✗ ', ''),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _passwordStatus!.startsWith('✓') ? const Color(0xFF10B981) : Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -4183,6 +4311,35 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         const Spacer(),
         Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField(String label, TextEditingController controller, bool visible, void Function(bool) onToggle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          obscureText: !visible,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[300]!)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[200]!)),
+            suffixIcon: label != "Confirm New Password"
+                ? IconButton(
+                    icon: Icon(visible ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 16),
+                    onPressed: () => onToggle(!visible),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  )
+                : null,
+          ),
+        ),
       ],
     );
   }
