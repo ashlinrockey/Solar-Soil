@@ -215,6 +215,8 @@ class LeafDiagnostic {
 // ─────────────────────────────────────────────────────────────────────────────
 class TelemetryProvider extends ChangeNotifier {
   // Config URLs — dynamic for web based on browser location, absolute for native
+  String get baseHttpUrl => _baseHttpUrl;
+
   String get _baseHttpUrl {
     if (kIsWeb) {
       final host = Uri.base.host;

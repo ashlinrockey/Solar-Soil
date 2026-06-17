@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:html' as html;
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -10,6 +9,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/telemetry_chart.dart';
 import '../widgets/terminal_monitor.dart';
+import '../utils/redirect.dart';
 import 'login_screen.dart';
 import 'spinach_garden_detail_screen.dart';
 import 'dart:ui' as ui;
@@ -159,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void _handleLogout(BuildContext context) {
     if (kIsWeb) {
       // Redirect to the HTML login page for web
-      html.window.location.href = '/';
+      redirectTo('/');
     } else {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -795,8 +795,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     }
     final qs = params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&');
 
-    // Redirect browser to backend endpoint for direct file download
-    html.window.location.href = '${html.window.location.origin}/api/telemetry/export-excel?$qs';
+    final baseUrl = Provider.of<TelemetryProvider>(context, listen: false).baseHttpUrl;
+    redirectTo('$baseUrl/api/telemetry/export-excel?$qs');
 
     setState(() => _exportState = 'done');
     await Future.delayed(const Duration(seconds: 3));
