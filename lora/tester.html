@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Soil - Sensor Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-700">
+        <h1 class="text-2xl font-bold mb-2">Sensor Simulator</h1>
+        <p class="text-slate-400 text-sm mb-8">Test your dashboard without installing Python or buying hardware.</p>
+
+        <div class="space-y-6">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">MQTT Status</label>
+                <div id="status" class="px-4 py-2 rounded-xl bg-slate-900 text-sm font-mono text-amber-500 border border-slate-700">Connecting...</div>
+            </div>
+
+            <button id="send-btn" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 rounded-2xl font-bold transition-all transform active:scale-95 shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+                Send Random Data
+            </button>
+
+            <div class="flex items-center gap-4">
+                <input type="checkbox" id="auto-send" class="w-5 h-5 rounded border-slate-700 bg-slate-900 text-emerald-500">
+                <label for="auto-send" class="text-sm text-slate-300">Auto-send every 5 seconds</label>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Last Payload Sent</label>
+                <pre id="payload" class="p-4 rounded-xl bg-slate-900 text-[10px] text-blue-400 font-mono border border-slate-700 overflow-x-auto min-h-[60px]">N/A</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const sendBtn = document.getElementById('send-btn');
+        const autoSendCb = document.getElementById('auto-send');
+        const payloadEl = document.getElementById('payload');
+        
+
+        const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+        client.on('connect', () => {
+            statusEl.innerText = 'Connected to Broker';
+            statusEl.classList.replace('text-amber-500', 'text-emerald-500');
+        });
+
+        const sendData = () => {
+            const data = {
+                temp: (25 + Math.random() * 5).toFixed(1),
+                soil: Math.floor(30 + Math.random() * 40),
+                v: (4.5 + Math.random() * 1).toFixed(1),
+                ph: (6.0 + Math.random() * 1).toFixed(1)
+            };
+            const payload = JSON.stringify(data);
+            client.publish('solarsoil/nodeA', payload);
+            payloadEl.innerText = payload;
+            
+            // Animation flash
+            sendBtn.classList.add('bg-emerald-400');
+            setTimeout(() => sendBtn.classList.remove('bg-emerald-400'), 100);
+        };
+
+        sendBtn.addEventListener('click', sendData);
+
+        setInterval(() => {
+            if (autoSendCb.checked) sendData();
+        }, 5000);
+    </script>
+</body>
+</html>

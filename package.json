@@ -1,0 +1,16 @@
+{
+  "name": "ui",
+  "version": "1.0.0",
+  "description": "A real-time IoT monitoring and control dashboard for a solar-powered agricultural sensor network. Built with **Flutter Web** (frontend) + **Node.js/Express** (backend) + **InfluxDB** (time-series database) + **MQTT** (sensor messaging).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

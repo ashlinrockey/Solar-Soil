@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Soil Telemetry - Interactive Circuit Visualizer</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --panel-bg: rgba(17, 25, 40, 0.75);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-yellow: #eab308;
+      --accent-green: #10b981;
+      --accent-purple: #a855f7;
+      --accent-red: #ef4444;
+      --glass-blur: blur(16px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(11, 15, 25, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    }
+
+    .logo-icon svg {
+      width: 1.5rem;
+      height: 1.5rem;
+      fill: #fff;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(to right, #fff, var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      padding: 0.5rem 1.25rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent-cyan), rgba(6, 182, 212, 0.3));
+      color: #fff;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+      border: 1px solid rgba(6, 182, 212, 0.5);
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1200px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .visualizer-card {
+      background: var(--panel-bg);
+      border-radius: 1rem;
+      border: 1px solid var(--border-color);
+      backdrop-filter: var(--glass-blur);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      min-height: 600px;
+    }
+
+    .visualizer-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.1);
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      background-color: var(--accent-green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px var(--accent-green); }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    .visualizer-body {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .diagram-svg {
+      width: 100%;
+      height: 100%;
+      max-height: 520px;
+    }
+
+    /* Controls Panel */
+    .controls-panel {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .control-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 24px;
+      border: 1px solid var(--border-color);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-secondary);
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: rgba(6, 182, 212, 0.2);
+      border-color: var(--accent-cyan);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+      background-color: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    /* Details Panel */
+    .details-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .details-card {
+      background: var(--panel-bg);
+      border-radius: 1rem;
+      border: 1px solid var(--border-color);
+      backdrop-filter: var(--glass-blur);
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    .card-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title svg {
+      width: 1rem;
+      height: 1rem;
+      fill: var(--accent-cyan);
+    }
+
+    .prop-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .prop-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    .prop-name {
+      color: var(--text-secondary);
+    }
+
+    .prop-value {
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .component-spec-card {
+      min-height: 250px;
+      transition: all 0.3s ease;
+    }
+
+    /* SVG Schematic Styling */
+    .wire {
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke 0.3s ease, stroke-width 0.3s ease;
+    }
+
+    .wire-power {
+      stroke: var(--accent-yellow);
+      opacity: 0.65;
+    }
+
+    .wire-gnd {
+      stroke: #374151;
+      opacity: 0.5;
+    }
+
+    .wire-signal {
+      stroke: var(--accent-cyan);
+      opacity: 0.75;
+    }
+
+    .wire-i2c {
+      stroke: var(--accent-purple);
+      opacity: 0.75;
+    }
+
+    .wire-spi {
+      stroke: #f43f5e;
+      opacity: 0.75;
+    }
+
+    .comp-box {
+      fill: #111827;
+      stroke: rgba(255, 255, 255, 0.15);
+      stroke-width: 1.5;
+      rx: 6;
+      ry: 6;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .comp-box:hover, .comp-box.selected {
+      fill: #1f2937;
+      stroke: var(--accent-cyan);
+      stroke-width: 2;
+      filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.3));
+    }
+
+    .comp-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--text-primary);
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    .comp-subtext {
+      font-size: 8px;
+      fill: var(--text-secondary);
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    .flow-particle {
+      stroke-dasharray: 8, 40;
+      stroke-dashoffset: 1000;
+      animation: dash 15s linear infinite;
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    /* Simulation values */
+    .sim-val {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+
+    .sim-val-power {
+      color: var(--accent-yellow);
+    }
+
+    .sim-val-soil {
+      color: #60a5fa;
+    }
+
+    .sim-val-temp {
+      color: #f87171;
+    }
+
+    footer {
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border-color);
+      background: rgba(11, 15, 25, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Solar Soil Telemetry</h1>
+        <p style="font-size: 0.75rem; color: var(--text-secondary);">Interactive System Visualizer 2.0</p>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchNode('main')">MAIN NODE 2.0</button>
+      <button class="tab-btn" onclick="switchNode('gateway')">GATEWAY NODE 2.0</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="visualizer-card">
+      <div class="visualizer-header">
+        <h2 id="node-title" style="font-family: 'Orbitron', sans-serif; font-size: 1rem;">Main Node 2.0 Schematic</h2>
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span id="system-status-text">SYSTEM STANDBY</span>
+        </div>
+      </div>
+
+      <div class="visualizer-body" id="diagram-container">
+        <!-- SVG diagram gets injected here dynamically -->
+      </div>
+
+      <div class="controls-panel">
+        <div class="control-group">
+          <span class="control-label">SIMULATE POWER:</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="power-toggle" onchange="togglePowerSimulation(this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="control-group" id="solar-control">
+          <span class="control-label">SOLAR INTENSITY:</span>
+          <input type="range" id="solar-slider" min="0" max="100" value="50" oninput="adjustSolar(this.value)" disabled style="cursor: pointer; accent-color: var(--accent-cyan);">
+          <span class="sim-val-power" id="solar-val" style="font-size: 0.8rem; min-width: 40px; margin-left: 0.5rem;">50%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="details-sidebar">
+      <!-- System Telemetry Readings -->
+      <div class="details-card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+          <span id="telemetry-card-title">Telemetry Monitors</span>
+        </div>
+        <div class="prop-list" id="telemetry-fields">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Selected Component Specification -->
+      <div class="details-card component-spec-card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <span>Component Details</span>
+        </div>
+        <div id="component-spec-content">
+          <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.4;">Click any component box in the schematic layout to view exact technical specifications, operational purposes, and primary pin connections.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Designed for Solar Soil Telemetry Systems & DevOps VPS Deployment Framework. All Rights Reserved. © 2026.
+  </footer>
+
+  <script>
+    let activeNode = 'main';
+    let powerSimulating = false;
+    let solarVal = 50;
+    let simInterval = null;
+
+    // Component details lookup
+    const components = {
+      solar: {
+        title: "Solar Panel (6V 2W)",
+        props: {
+          "Voltage Rating": "6.0 V Max",
+          "Power Rating": "2.0 Watt",
+          "Role": "Ambient solar energy harvester",
+          "Primary Connection": "Anti-backfeed Schottky diode anode",
+          "Priority": "Essential"
+        }
+      },
+      diode: {
+        title: "Schottky Diode (1N5819)",
+        props: {
+          "Forward Voltage Drop": "0.45 V (Low drop)",
+          "Peak Rectifying Current": "1.0 A",
+          "Operational Purpose": "Prevents battery discharge back into panel",
+          "Connection": "Solar (+) to Battery Holder (+)",
+          "Priority": "Essential"
+        }
+      },
+      battery: {
+        title: "4x AA NiMH Batteries",
+        props: {
+          "Chemistry": "Nickel-Metal Hydride (Rechargeable)",
+          "Nominal Voltage": "4.8 V Series Config",
+          "Capacity": "2100 mAh (GP ReCyko)",
+          "Role": "Energy storage buffer for night/cloudy days",
+          "Priority": "Essential"
+        }
+      },
+      buck: {
+        title: "LM2596 Buck Converter",
+        props: {
+          "Input Voltage Range": "4.5V - 40V",
+          "Output Voltage": "Regulated 5.0 V",
+          "Switching Frequency": "150 kHz",
+          "Role": "Steps down battery voltage to ESP32 safe limits",
+          "Priority": "Essential"
+        }
+      },
+      esp32c6: {
+        title: "ESP32-C6 DevKit",
+        props: {
+          "Microcontroller Core": "32-bit RISC-V Single-Core",
+          "Wireless Options": "WiFi 6, Bluetooth 5, Thread/Zigbee",
+          "Main Regulated Input": "5V Pin from Buck Converter",
+          "Digital Rails": "Provides 3.3V out for sensors",
+          "Sleep Modes": "Deep sleep capability for battery saving",
+          "Priority": "Essential"
+        }
+      },
+      lora: {
+        title: "SX1276 SPI LoRa Module",
+        props: {
+          "Frequency Band": "868 MHz (Europe standard)",
+          "Interface protocol": "SPI Bus (MOSI, MISO, SCK, CS)",
+          "Max Transmission Power": "+20 dBm (100mW)",
+          "Role": "Long-range wireless packet communication",
+          "Priority": "Essential"
+        }
+      },
+      soil: {
+        title: "Capacitive Soil Moisture v1.2",
+        props: {
+          "Sensor Technology": "Capacitive (resistant to soil corrosion)",
+          "Signal Format": "Analog voltage output (0.5V - 3.0V)",
+          "VCC Rating": "3.3V from ESP32",
+          "Analog Input Connection": "ESP32-C6 GPIO 0 (ADC)",
+          "Priority": "Essential"
+        }
+      },
+      dht22: {
+        title: "DHT22 Sensor",
+        props: {
+          "Measures": "Temperature (-40 to 80°C), Humidity (0-100%)",
+          "Data Interface": "Single-bus digital pin (GPIO 1)",
+          "Signal Conditioning": "4.7kΩ Pull-Up Resistor connected to 3.3V",
+          "Accuracy": "Temp: ±0.5°C, Humidity: ±2%",
+          "Priority": "Essential"
+        }
+      },
+      ina219: {
+        title: "INA219 Power Monitor",
+        props: {
+          "Sensed parameters": "High-side current & voltage drop",
+          "Interface standard": "I2C Bus (SDA/GPIO6, SCL/GPIO7)",
+          "VCC Source": "3.3V rail",
+          "Shunt Wiring": "Connected between Battery (+) and LM2596 IN (+)",
+          "Priority": "Optional"
+        }
+      },
+      adapter: {
+        title: "5V USB Charger",
+        props: {
+          "Input Rating": "100-240V AC",
+          "Output Rating": "5V DC 2A (10W)",
+          "Role": "Uninterrupted AC grid power converter",
+          "Priority": "Essential"
+        }
+      },
+      gate_esp32c6: {
+        title: "ESP32-C6 Gateway Node",
+        props: {
+          "Operational Mode": "WiFi Access Point + MQTT Client Gateway",
+          "Power Input": "USB-C 5V continuous connection",
+          "Telemetry Routing": "Forwards packets via WebSockets to local/cloud InfluxDB",
+          "SPI Interface": "SX1276 LoRa RFM95W module",
+          "Priority": "Essential"
+        }
+      },
+      gate_lora: {
+        title: "RFM95W LoRa Transceiver",
+        props: {
+          "Base Chip": "SX1276 LoRa Core",
+          "Role": "Receives wireless sensor packets from Main Node",
+          "Power Source": "3.3V from Gateway ESP32",
+          "SPI Hookup": "Shared SPI bus (CS: GPIO 9, DIO0: GPIO 8, RST: GPIO 15)",
+          "Priority": "Essential"
+        }
+      },
+      oled: {
+        title: "0.96\" SSD1306 OLED Display",
+        props: {
+          "Resolution": "128 x 64 Pixels",
+          "Driver Controller": "SSD1306",
+          "Interface Standard": "I2C Bus (SDA: GPIO 6, SCL: GPIO 7)",
+          "Purpose": "Local diagnostic output (Status, moisture, Wi-Fi IP)",
+          "Priority": "Optional"
+        }
+      },
+      cap_smooth: {
+        title: "10µF Electrolytic Capacitor (Smoothing)",
+        props: {
+          "Value": "10 µF",
+          "Voltage Rating": "25 V Max",
+          "Operational Purpose": "VCC power supply smoothing & noise reduction on ESP32 main input line",
+          "Placement": "Connected in parallel across Buck Converter OUT(+) and OUT(-)/GND",
+          "Priority": "Essential"
+        }
+      },
+      cap_dec: {
+        title: "100nF Ceramic Decoupling Capacitor",
+        props: {
+          "Value": "100 nF",
+          "Type": "Ceramic",
+          "Operational Purpose": "High-frequency noise decoupling for the LoRa module VCC line",
+          "Placement": "Connected in parallel across SX1276 VCC and GND as close as possible",
+          "Priority": "Essential"
+        }
+      },
+      res_pullup: {
+        title: "4.7kΩ Pull-Up Resistor",
+        props: {
+          "Resistance": "4.7 kΩ",
+          "Tolerance": "±5% Carbon Film",
+          "Operational Purpose": "Ensures stable digital signal levels on the DHT22 single-bus data line",
+          "Placement": "Connected between DHT22 DATA line and ESP32 3.3V VCC",
+          "Priority": "Essential"
+        }
+      }
+    };
+
+    // System Telemetry Presets
+    const telemetry = {
+      main: {
+        off: [
+          { name: "Solar Generation", val: "0.00 W" },
+          { name: "Charging Current", val: "0.0 mA" },
+          { name: "Battery Level", val: "4.12 V (60%)" },
+          { name: "Power Output VCC", val: "0.00 V" },
+          { name: "Soil Moisture", val: "N/A" },
+          { name: "Air Temperature", val: "N/A" },
+          { name: "LoRa Tx Status", val: "SLEEPING" }
+        ],
+        on: [
+          { name: "Solar Generation", val: "1.25 W", class: "sim-val-power" },
+          { name: "Charging Current", val: "260.4 mA", class: "sim-val-power" },
+          { name: "Battery Level", val: "4.84 V (98%)", class: "sim-val-power" },
+          { name: "Power Output VCC", val: "5.02 V (Regulated)", class: "sim-val-power" },
+          { name: "Soil Moisture", val: "42.5 %", class: "sim-val-soil" },
+          { name: "Air Temperature", val: "24.8 °C", class: "sim-val-temp" },
+          { name: "LoRa Tx Status", val: "TX ACTIVE (868MHz)", class: "sim-val" }
+        ]
+      },
+      gateway: {
+        off: [
+          { name: "VCC Power Input", val: "0.00 V" },
+          { name: "Gateway Logic Status", val: "OFFLINE" },
+          { name: "LoRa Receiver Rx", val: "STANDBY" },
+          { name: "WiFi Connection", val: "DISCONNECTED" },
+          { name: "Broker MQTT Link", val: "OFFLINE" },
+          { name: "InfluxDB Sync", val: "INACTIVE" }
+        ],
+        on: [
+          { name: "VCC Power Input", val: "5.04 V (USB Powered)", class: "sim-val-power" },
+          { name: "Gateway Logic Status", val: "ACTIVE", class: "sim-val" },
+          { name: "LoRa Receiver Rx", val: "LISTENING...", class: "sim-val" },
+          { name: "WiFi Connection", val: "CONNECTED (solar-soils)", class: "sim-val-soil" },
+          { name: "Broker MQTT Link", val: "CONNECTED (port 1883)", class: "sim-val-soil" },
+          { name: "InfluxDB Sync", val: "SYNCED (solarsoil-production)", class: "sim-val-power" }
+        ]
+      }
+    };
+
+    function selectComponent(compKey) {
+      // Unselect previous
+      document.querySelectorAll('.comp-box').forEach(el => el.classList.remove('selected'));
+      
+      // Select new
+      const target = document.getElementById('box-' + compKey);
+      if (target) {
+        target.classList.add('selected');
+      }
+
+      const comp = components[compKey];
+      if (!comp) return;
+
+      let html = `<h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.9rem; color: #fff; margin-bottom: 0.75rem;">${comp.title}</h3>`;
+      html += `<div class="prop-list">`;
+      for (const [key, value] of Object.entries(comp.props)) {
+        html += `
+          <div class="prop-item">
+            <span class="prop-name">${key}:</span>
+            <span class="prop-value">${value}</span>
+          </div>
+        `;
+      }
+      html += `</div>`;
+      document.getElementById('component-spec-content').innerHTML = html;
+    }
+
+    function switchNode(nodeType) {
+      activeNode = nodeType;
+      
+      // Toggle button styling
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.includes(nodeType.toUpperCase()));
+      if (activeBtn) activeBtn.classList.add('active');
+
+      // Update titles
+      document.getElementById('node-title').textContent = nodeType === 'main' ? "Main Node 2.0 Schematic" : "Gateway Node 2.0 Schematic";
+      document.getElementById('telemetry-card-title').textContent = nodeType === 'main' ? "Node Telemetry Monitors" : "Gateway Base Diagnostics";
+      
+      // Solar control toggle
+      const solarGroup = document.getElementById('solar-control');
+      if (nodeType === 'gateway') {
+        solarGroup.style.opacity = '0.3';
+        document.getElementById('solar-slider').disabled = true;
+      } else {
+        solarGroup.style.opacity = powerSimulating ? '1' : '0.3';
+        document.getElementById('solar-slider').disabled = !powerSimulating;
+      }
+
+      renderSchematic();
+      updateTelemetryUI();
+    }
+
+    function togglePowerSimulation(checked) {
+      powerSimulating = checked;
+      
+      const statusText = document.getElementById('system-status-text');
+      const statusDot = document.querySelector('.status-dot');
+      const badge = document.querySelector('.status-badge');
+
+      if (checked) {
+        statusText.textContent = "SIMULATION RUNNING";
+        statusText.style.color = "var(--accent-cyan)";
+        statusDot.style.backgroundColor = "var(--accent-cyan)";
+        statusDot.style.boxShadow = "0 0 10px var(--accent-cyan)";
+        badge.style.borderColor = "rgba(6, 182, 212, 0.3)";
+        badge.style.backgroundColor = "rgba(6, 182, 212, 0.1)";
+
+        if (activeNode === 'main') {
+          document.getElementById('solar-slider').disabled = false;
+          document.getElementById('solar-control').style.opacity = '1';
+        }
+
+        // Enable particles
+        document.querySelectorAll('.flow-particle').forEach(p => {
+          p.style.display = 'block';
+          p.style.animationPlayState = 'running';
+        });
+
+        startSimulatingValues();
+      } else {
+        statusText.textContent = "SYSTEM STANDBY";
+        statusText.style.color = "var(--accent-green)";
+        statusDot.style.backgroundColor = "var(--accent-green)";
+        statusDot.style.boxShadow = "0 0 8px var(--accent-green)";
+        badge.style.borderColor = "rgba(16, 185, 129, 0.2)";
+        badge.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
+
+        document.getElementById('solar-slider').disabled = true;
+        document.getElementById('solar-control').style.opacity = '0.3';
+
+        // Disable particles
+        document.querySelectorAll('.flow-particle').forEach(p => {
+          p.style.display = 'none';
+        });
+
+        stopSimulatingValues();
+      }
+      
+      updateTelemetryUI();
+    }
+
+    function adjustSolar(val) {
+      solarVal = val;
+      document.getElementById('solar-val').textContent = val + "%";
+      
+      // Speed up power flows dynamically
+      const powerFlows = document.querySelectorAll('.flow-particle-power');
+      const speed = Math.max(1, (100 - val) * 0.2); // Faster speed for higher intensity
+      powerFlows.forEach(p => {
+        p.style.animationDuration = speed + 's';
+      });
+
+      if (powerSimulating) {
+        updateDynamicValues();
+      }
+    }
+
+    function startSimulatingValues() {
+      if (simInterval) clearInterval(simInterval);
+      simInterval = setInterval(() => {
+        if (!powerSimulating) return;
+        updateDynamicValues();
+      }, 1500);
+    }
+
+    function stopSimulatingValues() {
+      if (simInterval) clearInterval(simInterval);
+    }
+
+    function updateDynamicValues() {
+      if (activeNode === 'main') {
+        const gen = ((solarVal / 100) * 2.1).toFixed(2);
+        const curr = ((solarVal / 100) * 410).toFixed(1);
+        const bat = (4.0 + (solarVal / 100) * 0.84).toFixed(2);
+        const batPct = Math.round(50 + (solarVal / 100) * 49);
+        const moisture = (38 + Math.random() * 8).toFixed(1);
+        const temp = (23.5 + Math.random() * 2).toFixed(1);
+
+        const dataset = telemetry.main.on;
+        dataset[0].val = gen + " W";
+        dataset[1].val = curr + " mA";
+        dataset[2].val = bat + " V (" + batPct + "%)";
+        dataset[4].val = moisture + " %";
+        dataset[5].val = temp + " °C";
+      } else {
+        const noise = (Math.random() * 0.05).toFixed(2);
+        telemetry.gateway.on[0].val = (5.0 + parseFloat(noise)).toFixed(2) + " V (USB Powered)";
+      }
+      updateTelemetryUI();
+    }
+
+    function updateTelemetryUI() {
+      const mode = powerSimulating ? 'on' : 'off';
+      const fields = telemetry[activeNode][mode];
+      
+      let html = '';
+      fields.forEach(f => {
+        const cls = f.class ? `class="${f.class}"` : '';
+        html += `
+          <div class="prop-item">
+            <span class="prop-name">${f.name}:</span>
+            <span ${cls} style="font-weight: 600;">${f.val}</span>
+          </div>
+        `;
+      });
+      document.getElementById('telemetry-fields').innerHTML = html;
+    }
+
+    function renderSchematic() {
+      const container = document.getElementById('diagram-container');
+      
+      if (activeNode === 'main') {
+        container.innerHTML = `
+          <svg class="diagram-svg" viewBox="0 0 950 500">
+            <!-- Definitions for glowing particles -->
+            <defs>
+              <linearGradient id="grad-solar" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="var(--accent-yellow)"/>
+                <stop offset="100%" stop-color="#fff"/>
+              </linearGradient>
+              <linearGradient id="grad-signals" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="var(--accent-cyan)"/>
+                <stop offset="100%" stop-color="#fff"/>
+              </linearGradient>
+            </defs>
+
+            <!-- CONNECTIONS & WIRES (Power) -->
+            <!-- Solar to Diode -->
+            <path id="wire-solar-diode" class="wire wire-power" d="M 130,215 L 190,215" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="url(#grad-solar)" stroke-width="3" d="M 130,215 L 190,215" style="display: none; animation-duration: 4s;" />
+
+            <!-- Diode to Battery -->
+            <path id="wire-diode-batt" class="wire wire-power" d="M 235,215 L 260,215 L 260,155 L 290,155" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="url(#grad-solar)" stroke-width="3" d="M 235,215 L 260,215 L 260,155 L 290,155" style="display: none; animation-duration: 4s;" />
+
+            <!-- Solar (-) to Batt (-) -->
+            <path class="wire wire-gnd" d="M 130,245 L 260,245 L 260,275 L 290,275" />
+
+            <!-- Battery (+) to INA -->
+            <path id="wire-batt-ina" class="wire wire-power" d="M 390,155 L 420,155 L 420,205 L 450,205" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="url(#grad-solar)" stroke-width="3" d="M 390,155 L 420,155 L 420,205 L 450,205" style="display: none; animation-duration: 4s;" />
+
+            <!-- Battery (-) to Buck (-) / GND -->
+            <path class="wire wire-gnd" d="M 390,275 L 430,275 L 430,230 L 450,230" />
+            <path class="wire wire-gnd" d="M 430,275 L 620,275 L 620,230 L 640,230" />
+
+            <!-- INA to Switch -->
+            <path id="wire-ina-switch" class="wire wire-power" d="M 510,205 L 530,205 L 530,215 L 550,215" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="url(#grad-solar)" stroke-width="3" d="M 510,205 L 530,205 L 530,215 L 550,215" style="display: none; animation-duration: 4s;" />
+
+            <!-- Switch to Buck IN(+) -->
+            <path id="wire-switch-buck" class="wire wire-power" d="M 600,215 L 640,215" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="url(#grad-solar)" stroke-width="3" d="M 600,215 L 640,215" style="display: none; animation-duration: 4s;" />
+
+            <!-- Buck OUT(+) to C1 and ESP32 5V -->
+            <path id="wire-buck-esp" class="wire wire-power" d="M 710,205 L 745,205" />
+            <path class="wire wire-power" d="M 765,205 L 780,205 L 780,140 L 800,140" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="url(#grad-solar)" stroke-width="3" d="M 710,205 L 745,205 M 765,205 L 780,205 L 780,140 L 800,140" style="display: none; animation-duration: 3s;" />
+
+            <!-- Buck OUT(-) to C1 GND and ESP32 GND -->
+            <path class="wire wire-gnd" d="M 710,225 L 745,225" />
+            <path class="wire wire-gnd" d="M 765,225 L 790,225 L 790,160 L 800,160" />
+
+            <!-- WIRES (I2C) -->
+            <!-- ESP32 to INA SDA/SCL -->
+            <path class="wire wire-i2c" d="M 840,100 L 840,70 L 480,70 L 480,190" />
+            <path class="wire-i2c flow-particle" stroke="var(--accent-purple)" stroke-width="2" d="M 840,100 L 840,70 L 480,70 L 480,190" style="display: none; animation-duration: 5s;" />
+
+            <!-- WIRES (SPI) -->
+            <!-- ESP32 to LoRa -->
+            <path class="wire wire-spi" d="M 850,180 L 850,300 M 870,180 L 870,300 M 890,180 L 890,300" />
+            <path class="wire-spi flow-particle" stroke="#f43f5e" stroke-width="2" d="M 850,180 L 850,300" style="display: none; animation-duration: 2s;" />
+
+            <!-- WIRES (Sensors) -->
+            <!-- ESP32 to Soil Moisture -->
+            <path class="wire wire-signal" d="M 810,180 L 810,460 L 150,460 L 150,430" />
+            <path class="wire-signal flow-particle" stroke="url(#grad-signals)" stroke-width="2.5" d="M 810,180 L 810,460 L 150,460 L 150,430" style="display: none; animation-duration: 4s;" />
+
+            <!-- ESP32 to DHT22 -->
+            <path class="wire wire-signal" d="M 830,180 L 830,475 L 330,475 L 330,430" />
+            <path class="wire-signal flow-particle" stroke="url(#grad-signals)" stroke-width="2.5" d="M 830,180 L 830,475 L 330,475 L 330,430" style="display: none; animation-duration: 4s;" />
+
+
+            <!-- COMPONENT BOXES -->
+            <!-- Solar Panel -->
+            <rect id="box-solar" class="comp-box" x="20" y="160" width="110" height="110" onclick="selectComponent('solar')" />
+            <text class="comp-text" x="75" y="210">SOLAR PANEL</text>
+            <text class="comp-subtext" x="75" y="230">6V 2W</text>
+
+            <!-- Schottky Diode -->
+            <rect id="box-diode" class="comp-box" x="190" y="195" width="45" height="40" onclick="selectComponent('diode')" />
+            <text class="comp-text" x="212" y="220" style="font-size: 8px; text-anchor: middle;">DIODE</text>
+            <text class="comp-subtext" x="212" y="222" style="font-size: 6px; text-anchor: middle;">1N5819</text>
+
+            <!-- Battery Pack -->
+            <rect id="box-battery" class="comp-box" x="290" y="125" width="100" height="180" onclick="selectComponent('battery')" />
+            <text class="comp-text" x="340" y="205">GP NiMH</text>
+            <text class="comp-subtext" x="340" y="220">4x AA (4.8V)</text>
+
+            <!-- INA219 Power Monitor -->
+            <rect id="box-ina219" class="comp-box" x="450" y="190" width="60" height="50" onclick="selectComponent('ina219')" />
+            <text class="comp-text" x="480" y="215">INA219</text>
+            <text class="comp-subtext" x="480" y="228">Power Sense</text>
+
+            <!-- Toggle Switch -->
+            <rect id="box-switch" class="comp-box" x="550" y="200" width="50" height="30" />
+            <text class="comp-text" x="575" y="218" style="font-size: 8px;">SWITCH</text>
+            <text class="comp-subtext" x="575" y="224" style="font-size: 6px;">Manual</text>
+
+            <!-- LM2596 Buck Converter -->
+            <rect id="box-buck" class="comp-box" x="640" y="185" width="70" height="60" onclick="selectComponent('buck')" />
+            <text class="comp-text" x="675" y="215">LM2596</text>
+            <text class="comp-subtext" x="675" y="228">5V Buck</text>
+
+            <!-- C1: Smoothing Capacitor (10µF) -->
+            <rect id="box-cap_smooth" class="comp-box" x="745" y="200" width="20" height="30" onclick="selectComponent('cap_smooth')" />
+            <text class="comp-text" x="755" y="215" style="font-size: 8px;">C1</text>
+            <text class="comp-subtext" x="755" y="225" style="font-size: 6px;">10µF</text>
+            <path class="wire wire-power" d="M 755,200 L 755,205" />
+            <path class="wire wire-gnd" d="M 755,225 L 755,230" />
+
+            <!-- ESP32-C6 DevKit -->
+            <rect id="box-esp32c6" class="comp-box" x="800" y="100" width="110" height="80" onclick="selectComponent('esp32c6')" />
+            <text class="comp-text" x="855" y="140">ESP32-C6</text>
+            <text class="comp-subtext" x="855" y="155">Main Node MCU</text>
+
+            <!-- C2: Decoupling Capacitor (100nF) -->
+            <rect id="box-cap_dec" class="comp-box" x="890" y="210" width="20" height="30" onclick="selectComponent('cap_dec')" />
+            <text class="comp-text" x="900" y="225" style="font-size: 8px;">C2</text>
+            <text class="comp-subtext" x="900" y="235" style="font-size: 6px;">100nF</text>
+            <path class="wire wire-power" d="M 900,180 L 900,210" />
+            <path class="wire wire-gnd" d="M 900,240 L 900,270" />
+
+            <!-- Capacitive Soil Moisture Sensor -->
+            <rect id="box-soil" class="comp-box" x="80" y="380" width="140" height="50" onclick="selectComponent('soil')" />
+            <text class="comp-text" x="150" y="405">SOIL SENSOR</text>
+            <text class="comp-subtext" x="150" y="418">Capacitive v1.2</text>
+
+            <!-- DHT22 Sensor -->
+            <rect id="box-dht22" class="comp-box" x="280" y="380" width="100" height="50" onclick="selectComponent('dht22')" />
+            <text class="comp-text" x="330" y="405">DHT22</text>
+            <text class="comp-subtext" x="330" y="418">Temp & Humid</text>
+
+            <!-- R1: 4.7kΩ Pull-Up Resistor -->
+            <rect id="box-res_pullup" class="comp-box" x="360" y="330" width="30" height="20" onclick="selectComponent('res_pullup')" />
+            <text class="comp-text" x="375" y="342" style="font-size: 8px;">R1</text>
+            <text class="comp-subtext" x="375" y="348" style="font-size: 6px;">4.7kΩ</text>
+            <path class="wire wire-signal" d="M 375,350 L 375,475" />
+
+            <!-- LoRa Module -->
+            <rect id="box-lora" class="comp-box" x="810" y="300" width="90" height="80" onclick="selectComponent('lora')" />
+            <text class="comp-text" x="855" y="340">LoRa SX1276</text>
+            <text class="comp-subtext" x="855" y="355">868 MHz SPI</text>
+          </svg>
+        `;
+      } else {
+        container.innerHTML = `
+          <svg class="diagram-svg" viewBox="0 0 950 500">
+            <!-- Definitions for glowing particles -->
+            <defs>
+              <linearGradient id="grad-gateway" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="var(--accent-cyan)"/>
+                <stop offset="100%" stop-color="#fff"/>
+              </linearGradient>
+            </defs>
+
+            <!-- CONNECTIONS & WIRES (Power) -->
+            <!-- USB Supply to Cable -->
+            <path class="wire wire-power" d="M 130,220 L 190,220" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="var(--accent-yellow)" stroke-width="3" d="M 130,220 L 190,220" style="display: none; animation-duration: 4s;" />
+
+            <!-- Cable to Gateway USB port -->
+            <path class="wire wire-power" d="M 290,220 L 410,220 L 410,240" />
+            <path class="wire-power flow-particle flow-particle-power" stroke="var(--accent-yellow)" stroke-width="3" d="M 290,220 L 410,220 L 410,240" style="display: none; animation-duration: 4s;" />
+
+            <!-- Shared 3.3V power rails to peripherals -->
+            <!-- MCU to OLED VCC -->
+            <path class="wire wire-power" d="M 530,210 L 530,130 L 650,130" />
+            
+            <!-- MCU to LoRa VCC -->
+            <path class="wire wire-power" d="M 530,210 L 530,340 L 650,340" />
+
+            <!-- WIRES (I2C) -->
+            <!-- MCU to OLED SDA/SCL -->
+            <path class="wire wire-i2c" d="M 470,210 L 470,100 L 650,100 M 460,210 L 460,90 L 650,90" />
+            <path class="wire-i2c flow-particle" stroke="var(--accent-purple)" stroke-width="2.5" d="M 470,210 L 470,100 L 650,100" style="display: none; animation-duration: 3s;" />
+
+            <!-- WIRES (SPI) -->
+            <!-- MCU to LoRa SPI lines -->
+            <path class="wire wire-spi" d="M 450,280 L 450,370 L 650,370" />
+            <path class="wire-spi flow-particle" stroke="#f43f5e" stroke-width="2.5" d="M 450,280 L 450,370 L 650,370" style="display: none; animation-duration: 2s;" />
+
+
+            <!-- COMPONENT BOXES -->
+            <!-- USB Adapter -->
+            <rect id="box-adapter" class="comp-box" x="10" y="170" width="120" height="100" onclick="selectComponent('adapter')" />
+            <text class="comp-text" x="70" y="215">5V USB ADAPTER</text>
+            <text class="comp-subtext" x="70" y="230">AC 100-240V Input</text>
+
+            <!-- USB-C Cable -->
+            <rect id="box-cable" class="comp-box" x="190" y="195" width="100" height="50" />
+            <text class="comp-text" x="240" y="222">USB-C CABLE</text>
+            <text class="comp-subtext" x="240" y="232">Power/Data</text>
+
+            <!-- ESP32-C6 MCU -->
+            <rect id="box-gate_esp32c6" class="comp-box" x="380" y="200" width="180" height="80" onclick="selectComponent('gate_esp32c6')" />
+            <text class="comp-text" x="470" y="235">ESP32-C6 DEV KITS</text>
+            <text class="comp-subtext" x="470" y="250">Gateway Controller Node</text>
+
+            <!-- SSD1306 OLED Display -->
+            <rect id="box-oled" class="comp-box" x="650" y="70" width="160" height="80" onclick="selectComponent('oled')" />
+            <text class="comp-text" x="730" y="110">0.96" OLED SCREEN</text>
+            <text class="comp-subtext" x="730" y="122">Local Status Monitor</text>
+
+            <!-- RFM95W SPI LoRa Module -->
+            <rect id="box-gate_lora" class="comp-box" x="650" y="310" width="160" height="80" onclick="selectComponent('gate_lora')" />
+            <text class="comp-text" x="730" y="350">RFM95W LORA</text>
+            <text class="comp-subtext" x="730" y="362">868 MHz SPI Receiver</text>
+          </svg>
+        `;
+      }
+
+      // Add hovering logic to highlight pins
+      document.querySelectorAll('.comp-box').forEach(el => {
+        el.addEventListener('mouseover', () => {
+          el.style.filter = "drop-shadow(0 0 10px rgba(6, 182, 212, 0.4))";
+        });
+        el.addEventListener('mouseout', () => {
+          if (!el.classList.contains('selected')) {
+            el.style.filter = "none";
+          }
+        });
+      });
+    }
+
+    // Initialize layout
+    switchNode('main');
+  </script>
+</body>
+</html>

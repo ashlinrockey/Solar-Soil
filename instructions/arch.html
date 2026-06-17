@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarSoil NOC - Unified Hardware & Cloud Dashboard</title>
+    <style>
+        :root {
+            --bg-dark: #060b08;
+            --leaf-green: #2ecc71;
+            --forest-green: #142d1e;
+            --glass-bg: rgba(12, 28, 19, 0.65);
+            --glass-border: rgba(46, 204, 113, 0.18);
+            --accent-mint: #a3e4d7;
+            --text-main: #ecf0f1;
+            --text-dim: #7f8c8d;
+            --cloudflare-orange: #f38020;
+            --lora-purple: #9b59b6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 10% 15%, rgba(46, 204, 113, 0.07) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(155, 89, 182, 0.04) 0%, transparent 45%);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 15px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        header h1 span {
+            color: var(--leaf-green);
+        }
+
+        .system-badge {
+            background: rgba(46, 204, 113, 0.15);
+            color: var(--leaf-green);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 6px;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        /* Dashboard Arena Grid */
+        .arena {
+            position: relative;
+            width: 1400px;
+            height: 760px;
+            margin: 0 auto;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+        }
+
+        /* Group Boundaries */
+        .boundary {
+            position: absolute;
+            border-radius: 20px;
+            background: rgba(10, 22, 15, 0.25);
+            padding: 15px;
+        }
+
+        .farm-boundary {
+            top: 35px;
+            left: 30px;
+            width: 340px;
+            height: 545px;
+            border: 2px dashed rgba(155, 89, 182, 0.3);
+        }
+
+        .vps-boundary {
+            top: 35px;
+            left: 540px;
+            width: 830px;
+            height: 545px;
+            border: 2px dashed rgba(46, 204, 113, 0.25);
+        }
+
+        .boundary-label {
+            position: absolute;
+            top: -13px;
+            left: 20px;
+            background: #09130e;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Generic Dashboard Node Cards */
+        .node {
+            position: absolute;
+            background: rgba(8, 19, 13, 0.85);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            z-index: 5;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            border-color: var(--leaf-green);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .node-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 6px;
+        }
+
+        /* Precise Placement Profiles */
+        .sensor-node {
+            top: 30px;
+            left: 20px;
+            width: 300px;
+            border-left: 4px solid var(--lora-purple);
+        }
+
+        .gateway-node {
+            top: 315px;
+            left: 20px;
+            width: 300px;
+            border-left: 4px solid var(--leaf-green);
+        }
+
+        .cloudflare-node {
+            top: 215px;
+            left: 395px;
+            width: 120px;
+            text-align: center;
+            border-top: 3px solid var(--cloudflare-orange);
+        }
+
+        .caddy-node {
+            top: 30px;
+            left: 20px;
+            width: 340px;
+            height: 485px;
+        }
+
+        .podman-node {
+            top: 30px;
+            left: 390px;
+            width: 415px;
+            height: 485px;
+            border: 1px dashed #2980b9;
+        }
+
+        /* Row Layout Inside Cards */
+        .row-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            padding: 5px 8px;
+            margin-bottom: 5px;
+            font-size: 0.78rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .row-item span {
+            color: var(--text-dim);
+        }
+
+        .row-item strong {
+            color: var(--accent-mint);
+        }
+
+        /* Shared Pod Internals */
+        .pod-flex {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .pod-unit {
+            flex: 1;
+            background: #050a07;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .pod-unit h4 {
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+
+        /* Bottom Row Panels */
+        .cron-panel {
+            bottom: 25px;
+            left: 30px;
+            width: 640px;
+            height: 120px;
+        }
+
+        .metrics-panel {
+            bottom: 25px;
+            left: 690px;
+            width: 680px;
+            height: 120px;
+        }
+
+        .meter-flex {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 65px;
+            margin-top: 5px;
+        }
+
+        .meter-box {
+            text-align: center;
+        }
+
+        .meter-val {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--leaf-green);
+        }
+
+        .meter-lbl {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        /* Dynamic SVG Animated Pipelines */
+        .vector-map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .pipe {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+        }
+
+        .pipe-green {
+            stroke: rgba(46, 204, 113, 0.15);
+        }
+
+        .pipe-purple {
+            stroke: rgba(155, 89, 182, 0.15);
+        }
+
+        .pipe-orange {
+            stroke: rgba(243, 128, 32, 0.15);
+        }
+
+        .pipe-blue {
+            stroke: rgba(41, 128, 185, 0.15);
+        }
+
+        .pulse {
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 6, 20;
+            animation: flowPackets 4s linear infinite;
+        }
+
+        .pulse-purple {
+            stroke: var(--lora-purple);
+        }
+
+        .pulse-green {
+            stroke: var(--leaf-green);
+        }
+
+        .pulse-orange {
+            stroke: var(--cloudflare-orange);
+        }
+
+        .pulse-blue {
+            stroke: #3498db;
+        }
+
+        @keyframes flowPackets {
+            to {
+                stroke-dashoffset: -100;
+            }
+        }
+
+        /* Status Blips */
+        .blip {
+            width: 8px;
+            height: 8px;
+            background: var(--leaf-green);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+            animation: pulseBlip 1.8s infinite;
+        }
+
+        @keyframes pulseBlip {
+            0% {
+                box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(46, 204, 113, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>SolarSoil Infrastructure <span>Live Telemetry Engine</span></h1>
+        <div class="system-badge">SYSTEM STATUS: OPTIMAL</div>
+    </header>
+
+    <div class="arena">
+
+        <svg class="vector-map">
+            <path d="M 180 230 L 180 315" class="pipe pipe-purple" />
+            <path d="M 180 230 L 180 315" class="pulse pulse-purple" />
+
+            <path d="M 330 410 L 455 410 L 455 305" class="pipe pipe-green" />
+            <path d="M 330 410 L 455 410 L 455 305" class="pulse pulse-green" />
+
+            <path d="M 515 260 L 560 260 L 560 180 L 595 180" class="pipe pipe-orange" />
+            <path d="M 515 260 L 560 260 L 560 180 L 595 180" class="pulse pulse-orange" />
+
+            <path d="M 900 240 L 960 240 L 960 180 L 995 180" class="pipe pipe-green" />
+            <path d="M 900 240 L 960 240 L 960 180 L 995 180" class="pulse pulse-green" />
+
+            <path d="M 1090 155 L 1145 155" class="pipe pipe-blue" />
+            <path d="M 1090 155 L 1145 155" class="pulse pulse-blue" />
+        </svg>
+
+        <div class="boundary farm-boundary">
+            <div class="boundary-label" style="color: var(--lora-purple);">📡 Physical Deployment Field (LoRa Network)
+            </div>
+
+            <div class="node sensor-node">
+                <div class="node-title">
+                    <div class="blip" style="background: var(--lora-purple);"></div> Sensor Node (node.ino)
+                </div>
+                <div class="row-item"><span>Pin GPIO 04</span><strong>DHT22 Environment</strong></div>
+                <div class="row-item"><span>Pin GPIO 36</span><strong>Analog Soil Moisture</strong></div>
+                <div class="row-item"><span>Pin GPIO 21/22</span><strong>INA219 I2C Monitor</strong></div>
+                <div class="row-item"><span>RF Config</span><strong>868 MHz Frequency Band</strong></div>
+                <div class="row-item"><span>Interval Cycle</span><strong>15 Min Wake / Deep Sleep</strong></div>
+            </div>
+
+            <div class="node gateway-node">
+                <div class="node-title">
+                    <div class="blip"></div> Gateway Node (gateway.ino)
+                </div>
+                <div class="row-item"><span>Radio Mode</span><strong>Continuous LoRa RX</strong></div>
+                <div class="row-item"><span>Network Link</span><strong>2.4 GHz Station Wi-Fi</strong></div>
+                <div class="row-item"><span>MQTT Bridge</span><strong>broker.emqx.io:1883</strong></div>
+                <div class="row-item"><span>Data Route</span><strong>Publish: solarsoil/nodeA</strong></div>
+            </div>
+        </div>
+
+        <div class="node cloudflare-node">
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--cloudflare-orange); margin-bottom: 5px;">
+                Cloudflare</div>
+            <div style="font-size: 0.68rem; color: var(--text-dim);">Strict Origin SSL Verified Proxy</div>
+        </div>
+
+        <div class="boundary vps-boundary">
+            <div class="boundary-label">☁️ IONOS Cloud Engine VPS (Ubuntu Operating System)</div>
+
+            <div class="node caddy-node">
+                <div class="node-title">🛡️ Caddy Gateway Reverse Proxy</div>
+                <div class="row-item"><span>Listening Port</span><strong>443 TLS Enforced</strong></div>
+                <div class="row-item"><span>SSL Automation</span><strong>Origin Let's Encrypt Cert</strong></div>
+                <div class="row-item"><span>Security Enforcers</span><strong>nosniff, XFO, CSP Headers</strong></div>
+                <div class="row-item"><span>Compression</span><strong>Gzip Active</strong></div>
+                <div class="row-item"><span>Transport Policy</span><strong style="color: var(--leaf-green);">HSTS
+                        Enabled</strong></div>
+                <div class="row-item"><span>Logging System</span><strong>Structured JSON Logs</strong></div>
+                <div
+                    style="margin-top: 15px; font-size: 0.72rem; color: var(--text-dim); text-align: center; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;">
+                    Target Mapping Boundary Point: <span
+                        style="color: var(--leaf-green); font-weight: 700;">127.0.0.1:5000</span>
+                </div>
+            </div>
+
+            <div class="node podman-node">
+                <div class="node-title" style="color: #3498db;">📦 Podman Sandbox Layer: solarsoil-pod</div>
+                <div class="row-item" style="margin-top: -5px;"><span>Supervisor Unit</span><strong>Systemd User Unit
+                        Daemon</strong></div>
+
+                <div class="pod-flex">
+                    <div class="pod-unit animate-app" style="border-top: 3px solid var(--leaf-green);">
+                        <h4>solartd Web Core</h4>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); line-height: 1.4;">
+                            • Bundles Flutter UI Assets<br>
+                            • Decodes Ingress MQTT Packets<br>
+                            • Spits WebSocket Event Loops<br>
+                            • Processes REST API Routes
+                        </div>
+                    </div>
+                    <div class="pod-unit" style="border-top: 3px solid #2980b9;">
+                        <h4>InfluxDB v2.7 TSDB</h4>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); line-height: 1.4;">
+                            • Listening Internal Port: 8086<br>
+                            • Database Target: solarsoil<br>
+                            • Organization Target: college<br>
+                            • Token Key Validation: Active
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: 15px; font-size: 0.72rem; background: rgba(46,204,113,0.06); border: 1px solid rgba(46,204,113,0.12); padding: 8px; border-radius: 6px; text-align: center; color: var(--accent-mint);">
+                    🔒 Loopback Boundary: Core Application Ports Locked Down from WAN Exposure
+                </div>
+            </div>
+        </div>
+
+        <div class="node cron-panel">
+            <div class="node-title">💾 System Integrity & Maintenance Framework</div>
+            <p style="font-size: 0.75rem; color: var(--text-dim); line-height: 1.4;">
+                System Automation Execution Timing Window: <span style="color: #fff; font-weight: 600;">3:00 AM Daily
+                    Cron Block</span>.<br>
+                Target Storage Cache Destination Pathway: <span
+                    style="color: var(--leaf-green);">~/caddy-backups/</span>.<br>
+                Encapsulated Target Matrix: Compiles active Caddyfiles, Systemd configurations, and Pod runtime
+                snapshots.
+            </p>
+        </div>
+
+        <div class="node metrics-panel">
+            <div class="node-title">📊 Live VPS Performance Telemetry Matrix</div>
+            <div class="meter-flex">
+                <div class="meter-box">
+                    <div class="meter-val" id="cpu-load">42%</div>
+                    <div class="meter-lbl">Host CPU Load</div>
+                </div>
+                <div class="meter-box"
+                    style="border-left: 1px solid rgba(255,255,255,0.06); border-right: 1px solid rgba(255,255,255,0.06); padding: 0 35px;">
+                    <div class="meter-val" id="ram-usage">2.1 GB</div>
+                    <div class="meter-lbl">Allocated Memory</div>
+                </div>
+                <div class="meter-box">
+                    <div class="meter-val" style="color: var(--accent-mint);">23 Days</div>
+                    <div class="meter-lbl">Kernel Uptime</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Real-Time Asynchronous Host Performance Loop Emulator
+        function updateMetrics() {
+            const simulatedCpuValue = Math.floor(Math.random() * (48 - 36 + 1)) + 36;
+            const simulatedRamValue = (Math.random() * (2.2 - 1.9) + 1.9).toFixed(1);
+
+            document.getElementById('cpu-load').innerText = simulatedCpuValue + '%';
+            document.getElementById('ram-usage').innerText = simulatedRamValue + ' GB';
+        }
+        setInterval(updateMetrics, 2000);
+    </script>
+</body>
+
+</html>

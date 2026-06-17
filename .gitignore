@@ -1,0 +1,13 @@
+node_modules/
+backend/node_modules/
+.dart_tool/
+.pub-cache/
+.idea/
+build/
+frontend/build/
+frontend/.dart_tool/
+*.tar
+*.zip
+.env
+production/
+*.log

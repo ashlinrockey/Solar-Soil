@@ -1,0 +1,86 @@
+# ================================================================
+#  Solar Soil IoT Dashboard — Full Production Docker Compose
+#
+#  Runs the complete stack:
+#    - solarsoil-app   : Node.js backend + Flutter web frontend
+#    - influxdb        : InfluxDB 2.7 time-series database
+#
+#  Usage on the VPS (from /var/www/solarsoil-app/):
+#    docker compose up -d
+#    docker compose logs -f
+#    docker compose down
+#
+#  IMPORTANT: Create a .env file in this directory first:
+#    INFLUX_TOKEN=<your-strong-token>
+#    MQTT_BROKER=mqtt://broker.emqx.io:1883
+#    MQTT_TOPIC=solarsoil/nodeA
+# ================================================================
+
+services:
+
+  # ------------------------------------------------------------
+  # InfluxDB 2.7 — Time-series telemetry database
+  # ------------------------------------------------------------
+  influxdb:
+    image: influxdb:2.7
+    container_name: solarsoil_influxdb
+    restart: unless-stopped
+    # Only expose InfluxDB to the local Docker network (not the host)
+    # The app service connects via internal DNS: http://influxdb:8086
+    expose:
+      - "8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword123
+      DOCKER_INFLUXDB_INIT_ORG: college
+      DOCKER_INFLUXDB_INIT_BUCKET: solarsoil
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ------------------------------------------------------------
+  # Solar Soil App — Node.js API + WebSocket + Flutter Web
+  # ------------------------------------------------------------
+  app:
+    image: solarsoil-app:latest
+    container_name: solarsoil_app
+    restart: unless-stopped
+    ports:
+      # Expose port 5000 on the host so Caddy can proxy to it
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      # InfluxDB is reached via Docker internal network DNS
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: college
+      INFLUX_BUCKET: solarsoil
+      MQTT_BROKER: ${MQTT_BROKER:-mqtt://broker.emqx.io:1883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-solarsoil/nodeA}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+# ----------------------------------------------------------------
+# Named volumes for persistent data across container restarts
+# ----------------------------------------------------------------
+volumes:
+  influxdb-data:
+    driver: local
+  influxdb-config:
+    driver: local

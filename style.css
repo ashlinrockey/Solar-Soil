@@ -1,0 +1,45 @@
+body {
+    color: #1E293B;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.bg-mesh {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+    background: radial-gradient(circle at 15% 50%, rgba(0, 151, 157, 0.1), transparent 30%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.1), transparent 30%);
+}
+
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+input:focus-visible { outline: none; }
+
+input[type="checkbox"]:checked {
+    background-color: #00979D;
+    border-color: #00979D;
+}
+
+#login-view { background: #F8FAFC; }
+
+/* Password placeholder dot vertical centering */
+input[type="password"]::placeholder {
+  transform: translateY(1px);
+}
+
+

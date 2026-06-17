@@ -1,0 +1,48 @@
+# Exclude heavy local build artifacts from the Docker build context
+
+# Node.js
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Flutter build artifacts (include ONLY the compiled web output)
+frontend/.dart_tool/
+frontend/build/
+!frontend/build/web/
+
+# Git & IDE metadata
+.git/
+.gitignore
+.idea/
+.vscode/
+.dart_tool/
+
+# Secrets — NEVER bake environment secrets into the Docker image
+# Pass them at runtime via: docker run -e VAR=value or --env-file .env
+backend/.env
+.env
+
+# Local binary/archive files (too large for build context)
+*.xlsx
+*.zip
+*.tar
+*.gz
+
+# Local development scripts
+backend/run_db_podman.ps1
+backend/docker-compose.yml
+
+# Instructions (docs not needed in the container)
+instructions/
+
+# Flutter source code (only the compiled output is needed)
+frontend/lib/
+frontend/test/
+frontend/pubspec.yaml
+frontend/pubspec.lock
+frontend/analysis_options.yaml
+frontend/*.iml
+frontend/.metadata
+frontend/.flutter-plugins-dependencies
+frontend/web/
+frontend/assets/

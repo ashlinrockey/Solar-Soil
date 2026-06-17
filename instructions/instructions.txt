@@ -1,0 +1,134 @@
+================================================================================
+          ESP32 LORA SOLAR TELEMETRY SYSTEM - VPS DEPLOYMENT MANUAL
+================================================================================
+
+This guide provides a comprehensive, step-by-step walkthrough to deploy your entire
+telemetry dashboard stack (Express.js backend, static Flutter Web frontend,
+automated InfluxDB via Podman, and Caddy reverse proxy with automatic HTTPS)
+onto a live IONOS Linux VPS.
+
+--------------------------------------------------------------------------------
+PREREQUISITES
+--------------------------------------------------------------------------------
+
+Before deploying, ensure you have:
+1. An active IONOS Linux VPS running Ubuntu (22.04 LTS or 24.04 LTS is ideal).
+2. A custom domain name or subdomain (e.g., solar.yourdomain.com).
+3. The server IP address and custom SSH port of your IONOS VPS.
+4. Open ports on your IONOS Cloud Firewall:
+   * Your custom SSH Port (e.g., 2222 or custom port instead of standard 22)
+   * Port 80 (HTTP)
+   * Port 443 (HTTPS)
+   * Port 1883 (MQTT - optional, only if you plan to host your own broker)
+
+--------------------------------------------------------------------------------
+STEP 1: CONFIGURE DOMAIN DNS A-RECORD
+--------------------------------------------------------------------------------
+
+To enable Caddy's automatic Let's Encrypt HTTPS setup:
+1. Log in to your domain host registrar dashboard (e.g., IONOS Customer Control Panel).
+2. Go to DNS Settings for your domain.
+3. Add a new A-Record:
+   * Hostname / Prefix: @ (or "solar" if using a subdomain)
+   * Type: A
+   * Value: [Your_IONOS_VPS_IP_Address]
+   * TTL: Auto (or 3600)
+4. Save the DNS record. (DNS propagation can take a few minutes up to 1 hour).
+
+--------------------------------------------------------------------------------
+STEP 2: COMPILE THE FLUTTER WEB APP LOCALLY
+--------------------------------------------------------------------------------
+
+Do not attempt to compile Flutter on your VPS. Low-spec servers may run out of
+memory and crash during compiler builds. Compile it on your local machine:
+
+1. Open PowerShell / Command Prompt on your local computer.
+2. Navigate to your project's frontend directory:
+   cd c:\axxo\college\ui\frontend
+3. Compile the web assets:
+   flutter build web
+
+This outputs the optimized static web assets inside:
+c:\axxo\college\ui\frontend\build\web
+
+--------------------------------------------------------------------------------
+STEP 3: UPLOAD ALL CODE TO THE VPS
+--------------------------------------------------------------------------------
+
+You need to upload both the pre-compiled frontend assets and the backend system
+source files to your server.
+
+Using standard terminal SCP commands from your local computer (specifying your custom SSH port via uppercase "-P"):
+
+1. Upload the entire project directory to the VPS:
+   scp -P [YOUR_CUSTOM_PORT] -r "c:\axxo\college\ui" root@[Your_IONOS_VPS_IP]:/var/www/solarsoil-app
+
+2. Upload the automated deploy script directly to your VPS root directory:
+   scp -P [YOUR_CUSTOM_PORT] "c:\axxo\college\ui\instructions\deploy_vps.sh" root@[Your_IONOS_VPS_IP]:/root/
+
+*Note: You can also use graphic SFTP clients like FileZilla or WinSCP (just set the Port field to your custom port).*
+
+--------------------------------------------------------------------------------
+STEP 4: RUN THE VPS AUTOMATED DEPLOYMENT SCRIPT
+--------------------------------------------------------------------------------
+
+1. Open your terminal and connect to your VPS via SSH (specifying your custom SSH port via lowercase "-p"):
+   ssh -p [YOUR_CUSTOM_PORT] root@[Your_IONOS_VPS_IP]
+
+2. Make sure the script has executable permissions:
+   chmod +x /root/deploy_vps.sh
+
+3. Run the automated script, passing your domain as an argument:
+   /root/deploy_vps.sh solar.yourdomain.com
+
+The script will automatically execute:
+* System package upgrades
+* Installation of Podman container engine
+* Automatic startup and initialization of InfluxDB inside Podman
+* Installation of Node.js v20 and global PM2
+* Deployment of Express.js backend dependencies and environmental .env configs
+* Launch of the backend process under PM2
+* Installation of Caddy Web Server
+* Creation of reverse-proxy routing rules with automated Let's Encrypt HTTPS
+
+--------------------------------------------------------------------------------
+STEP 5: SYNC AND ORGANIZE WEB ASSETS ON VPS
+--------------------------------------------------------------------------------
+
+Move your pre-compiled Flutter Web assets to the public distribution directory:
+
+1. Logged into the VPS terminal, create the public folder:
+   mkdir -p /var/www/solarsoil-app/frontend/build/web
+
+2. Verify that the files transferred in Step 3 are in the correct place:
+   ls -la /var/www/solarsoil-app/frontend/build/web
+
+The Express.js server automatically serves the Flutter web app on route "/"
+from the "/var/www/solarsoil-app/frontend/build/web" directory.
+
+--------------------------------------------------------------------------------
+STEP 6: SERVICE MONITORING & TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+Once your app is live at https://yourdomain.com, use these diagnostic commands
+on the VPS to monitor your telemetry stack:
+
+A. Check backend server logs in real-time:
+   pm2 logs solarsoil-backend
+
+B. Monitor PM2 server resources and process load:
+   pm2 monit
+
+C. Verify that the InfluxDB container is active and running in Podman:
+   podman ps
+
+D. Check InfluxDB container diagnostic outputs:
+   podman logs influxdb-production
+
+E. Check Caddy reverse proxy SSL handshake status and logs:
+   sudo systemctl status caddy
+   sudo journalctl -u caddy --no-pager -n 50
+
+================================================================================
+🎉 CONGRATULATIONS! YOUR SECURE SYSTEM IS FULLY PREPARED FOR THE PUBLIC WEB!
+================================================================================

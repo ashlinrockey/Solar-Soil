@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Hardware Setup Guide — Solar Soil IoT</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    :root {
+      --primary: #00979D;
+      --primary-hover: #00767A;
+      --accent-emerald: #10B981;
+      --accent-blue: #3b82f6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --bg-dark: #0B0F19;
+      --bg-card: #FFFFFF;
+      --bg-body: #F8FAFC;
+      --text-main: #1E293B;
+      --text-dim: #64748B;
+      --text-dark: #0F172A;
+      --border-color: #E2E8F0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      padding: 50px;
+      border-radius: 28px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 151, 157, 0.12);
+    }
+
+    header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 24px;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .badge {
+      background: rgba(0, 151, 157, 0.08);
+      color: var(--primary);
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(0, 151, 157, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 15px;
+      margin-top: 6px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-top: 40px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid rgba(0, 151, 157, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 14px;
+      color: var(--text-slate);
+      margin-bottom: 12px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+
+    li {
+      font-size: 14px;
+      color: var(--text-slate);
+      margin-bottom: 6px;
+    }
+
+    /* Table Styling */
+    .table-container {
+      overflow-x: auto;
+      margin: 16px 0 24px 0;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background: #F1F5F9;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #F8FAFC;
+    }
+
+    .tag-essential {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-emerald);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .tag-optional {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-blue);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Schematic Art Box */
+    pre {
+      background: var(--bg-dark);
+      color: #E2E8F0;
+      padding: 18px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.5;
+      margin: 16px 0;
+      border: 1px solid #1E293B;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: #F1F5F9;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #0F172A;
+    }
+
+    /* Alert Boxes */
+    .info-box {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 20px 0;
+      color: #15803D;
+    }
+
+    .info-box h4 {
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .info-box.warn {
+      background: #FFFBEB;
+      border-color: #FDE68A;
+      color: #B45309;
+    }
+
+    .info-box.danger {
+      background: #FEF2F2;
+      border-color: #FCA5A5;
+      color: #B91C1C;
+    }
+
+    /* Pin Badge */
+    .pin-badge {
+      font-family: 'JetBrains Mono', monospace;
+      background: #E2E8F0;
+      color: #334155;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    /* Nav bar styling */
+    .nav-guide {
+      background: #F1F5F9;
+      border-radius: 12px;
+      padding: 12px 18px;
+      margin-bottom: 30px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .nav-guide a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-guide a:hover {
+      color: var(--primary-hover);
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 24px;
+        border-radius: 16px;
+      }
+      h1 { font-size: 24px; }
+      h2 { font-size: 18px; }
+      body { padding: 10px; }
+    }
+
+    /* Color-coded wiring board visualizer */
+    .wiring-board {
+      background: #0B0F19;
+      color: #F8FAFC;
+      padding: 24px;
+      border-radius: 16px;
+      margin: 20px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      border: 1px solid #1E293B;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .wire-red { color: #f43f5e; font-weight: 600; }
+    .wire-black { color: #94a3b8; font-weight: 600; }
+    .wire-yellow { color: #f59e0b; font-weight: 600; }
+    .wire-blue { color: #3b82f6; font-weight: 600; }
+    .wire-purple { color: #a855f7; font-weight: 600; }
+    .wire-green { color: #10b981; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-row">
+      <h1>ESP32 Hardware Connection Guide</h1>
+      <span class="badge">Solar Soil IoT</span>
+    </div>
+    <p class="subtitle">Complete step-by-step electronics wiring, pin assignments, and power regulation design</p>
+  </header>
+
+  <div class="nav-guide">
+    <a href="#parts-list">📦 1. Parts Inventory</a>
+    <a href="#power-wiring">⚡ 2. Power System Wiring</a>
+    <a href="#sensor-node">🌱 3. Main Sensor Node</a>
+    <a href="#gateway-node">📡 4. Gateway Node</a>
+    <a href="#passives">🛡️ 5. Noise & Safety Passives</a>
+    <a href="#breadboard-vis">🔌 6. Quick Wiring Visualizer</a>
+  </div>
+
+  <p>This document details the hardware configurations for the two nodes comprising the **Solar Soil IoT System**: the battery-powered field **Main Sensor Node** (which collects metrics and transmits them via LoRa) and the wall-powered **Gateway Node** (which translates incoming LoRa packets into MQTT events over Wi-Fi).</p>
+
+  <!-- Section 1: Parts Inventory -->
+  <h2 id="parts-list">📦 1. Parts Inventory (from Project BOM)</h2>
+  <p>The following tables represent the components allocated from the project hardware manifest for both nodes.</p>
+
+  <h3>Node A: Main Sensor Node Components</h3>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Purpose</th>
+          <th>Priority</th>
+          <th>Reichelt Part No.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ESP32-C6 DevKit N8</strong></td>
+          <td>Main RISC-V microcontroller with sleep support</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>esp32-c6 n8</code></td>
+        </tr>
+        <tr>
+          <td><strong>SX1276 LoRa Module (868 MHz)</strong></td>
+          <td>Wireless transceiver SPI breakout (RFM95W compatible)</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><strong>LoRa Antenna 868MHz (SMA)</strong></td>
+          <td>Provides high-efficiency RF transmission path</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>ora_868_mhz_antenna_sma_plug</code></td>
+        </tr>
+        <tr>
+          <td><strong>Capacitive Soil Moisture v1.2</strong></td>
+          <td>Analog soil moisture sensor (corrosion resistant)</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>sensor_bodenfeuchte_-223620</code></td>
+        </tr>
+        <tr>
+          <td><strong>DHT22 Sensor Breakout</strong></td>
+          <td>Reads ambient air temperature and humidity</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>dht22</code></td>
+        </tr>
+        <tr>
+          <td><strong>INA219 Power Monitor</strong></td>
+          <td>I2C High-side bus voltage and current sensing</td>
+          <td><span class="tag-optional">Optional</span></td>
+          <td><code>ina219</code></td>
+        </tr>
+        <tr>
+          <td><strong>Solar Panel 6V 2W</strong></td>
+          <td>Charges batteries during sunlit hours</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><strong>4x AA NiMH Batteries (GP ReCyko)</strong></td>
+          <td>4.8V rechargeable battery pack</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>recyko_nimh-akku_aa_mignon_2100_mah</code></td>
+        </tr>
+        <tr>
+          <td><strong>4x AA Battery Holder</strong></td>
+          <td>Series battery carriage box</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>holder AA</code></td>
+        </tr>
+        <tr>
+          <td><strong>LM2596 Buck Converter</strong></td>
+          <td>Regulates fluctuating battery pack voltage to 5.0V</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>2596-buvk-convtr</code></td>
+        </tr>
+        <tr>
+          <td><strong>Schottky Diode 1N5819</strong></td>
+          <td>Blocks reverse flow from battery into solar panel</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>in5819</code></td>
+        </tr>
+        <tr>
+          <td><strong>Passive Kit</strong></td>
+          <td>4.7kΩ, 10kΩ resistors; 100nF, 10µF capacitors</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Node B: Gateway Node Components</h3>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Qty</th>
+          <th>Purpose</th>
+          <th>Priority</th>
+          <th>Reichelt Part No.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ESP32-C6 DevKit N8</strong></td>
+          <td>1</td>
+          <td>Gateway logic supervisor and Wi-Fi station connection</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>esp32-c6 n8</code></td>
+        </tr>
+        <tr>
+          <td><strong>LoRa Module 868MHz</strong></td>
+          <td>1</td>
+          <td>Listens for sensor node telemetry frames (RFM95W/SPI)</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><strong>LoRa Antenna 868MHz SMA</strong></td>
+          <td>1</td>
+          <td>Ensures wide-area receive signal coverage</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td><code>ora_868_mhz_antenna_sma_plug</code></td>
+        </tr>
+        <tr>
+          <td><strong>OLED Display 0.96" SSD1306</strong></td>
+          <td>1</td>
+          <td>Displays local network status, Wi-Fi IP, and metrics</td>
+          <td><span class="tag-optional">Optional</span></td>
+          <td><code>oled_display_0_96_128x64_pixels_</code></td>
+        </tr>
+        <tr>
+          <td><strong>USB 5V/2A Adapter</strong></td>
+          <td>1</td>
+          <td>Steady 230V AC grid to 5V DC converter</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><strong>USB-C Cable (1m)</strong></td>
+          <td>1</td>
+          <td>Provides power and programming connection to ESP32</td>
+          <td><span class="tag-essential">Essential</span></td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 2: Power System Wiring -->
+  <h2 id="power-wiring">⚡ 2. Power System Wiring (Main Node)</h2>
+  <p>The Main Node is solar-recharged and battery-buffered. Precision regulation is required to step down charging currents safely and protect the ESP32 input rails.</p>
+
+  <div class="info-box warn">
+    <h4>⚠️ Protection Diode Placement</h4>
+    You MUST install the <strong>1N5819 Schottky Diode</strong> in series between the Solar Panel (+) and the Battery pack. Without this diode, the battery pack will discharge back into the solar panel cells overnight, causing cell degradation and rapid battery drainage.
+  </div>
+
+  <pre>
+[ SOLAR PANEL ]
+  (+) ──────► [ 1N5819 DIODE (Anode) ] ── [ (Cathode) ] ──┐
+  (-) ───────────────────────────────────────────────────┼──┐
+                                                         │  │
+                                                         ▼  ▼
+                                                 [ BATTERY PACK (4.8V) ]
+                                                         │  │
+                                 ┌───────────────────────┘  │
+                                 │   ┌──────────────────────┘
+                                 ▼   ▼
+                        [ LM2596 BUCK CONVERTER ]
+                          IN(+) ─── IN(-)
+                          OUT(+) ── OUT(-)
+                            │         │
+                            ▼         ▼
+                      [ BREADBOARD POWER RAILS ]
+                            (+) ────── (-)
+                            (5V)     (GND)
+  </pre>
+
+  <p><strong>Step-by-step Power Assembly Flow:</strong></p>
+  <ol>
+    <li>Connect the **Solar Panel Positive (+)** wire to the Anode (non-striped side) of the **1N5819 Schottky Diode**.</li>
+    <li>Connect the Cathode (striped side) of the diode to the **Battery Holder Positive (+)** lead.</li>
+    <li>Connect the **Solar Panel Negative (-)** wire directly to the **Battery Holder Negative (-)** lead.</li>
+    <li>Route the battery pack lines to the **LM2596 Buck Converter Input** (Battery + to `IN+`, Battery - to `IN-`).</li>
+    <li>Use a multimeter to measure the buck converter output. Use a small screwdriver to turn the copper potentiometer screw on the blue LM2596 board until the output voltage reads exactly <strong>5.0V</strong>.</li>
+    <li>Connect the adjusted LM2596 outputs to the breadboard power rails (`OUT+` to Red rail, `OUT-` to Black rail).</li>
+  </ol>
+
+  <div class="info-box">
+    <h4>💡 INA219 Monitor Integration (Optional)</h4>
+    To enable high-side current and voltage sensing, run the Battery Holder (+) line through the INA219 shunt pin headers:
+    <br><code>Battery Holder (+)</code> ──► <code>INA219 VIN(+)</code> ──► <code>INA219 VIN(-)</code> ──► <code>LM2596 IN(+)</code>.
+  </div>
+
+  <!-- Section 3: Main Sensor Node Connection Map -->
+  <h2 id="sensor-node">🌱 3. Main Sensor Node Connection Map</h2>
+  <p>The following mapping connects the sensors and the SX1276 LoRa transceiver module to the **ESP32-C6** developer board on the breadboard.</p>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ESP32-C6 Pin</th>
+          <th>Component Pin</th>
+          <th>Signal Name / Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:#FFFBF2">
+          <td><span class="pin-badge">5V (or VIN)</span></td>
+          <td>LM2596 OUT(+)</td>
+          <td>Main 5.0V Power Input (Regulated)</td>
+        </tr>
+        <tr style="background:#FFFBF2">
+          <td><span class="pin-badge">GND</span></td>
+          <td>LM2596 OUT(-)</td>
+          <td>Common Ground Reference</td>
+        </tr>
+        <tr style="background:#F0FDF4">
+          <td><span class="pin-badge">3.3V</span></td>
+          <td>Sensors & LoRa VCC</td>
+          <td>Power distribution rail for low-power modules</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 5</span></td>
+          <td>LoRa SCK</td>
+          <td>SPI Clock</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 19</span></td>
+          <td>LoRa MISO</td>
+          <td>SPI Master In Slave Out</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 27</span></td>
+          <td>LoRa MOSI</td>
+          <td>SPI Master Out Slave In</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 18</span></td>
+          <td>LoRa SS / NSS</td>
+          <td>SPI Slave Select (Chip Select)</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 14</span></td>
+          <td>LoRa RST</td>
+          <td>SPI Reset Line</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 26</span></td>
+          <td>LoRa DIO0</td>
+          <td>LoRa Interrupt Request Pin (detects packet transmissions)</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 4</span></td>
+          <td>DHT22 DATA</td>
+          <td>Single-bus Digital Temperature/Humidity Data Stream</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 36</span></td>
+          <td>Soil moisture AOUT</td>
+          <td>ADC Analog Input (Soil Moisture Permittivity Voltages)</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 21</span></td>
+          <td>INA219 SDA</td>
+          <td>I2C Serial Data</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 22</span></td>
+          <td>INA219 SCL</td>
+          <td>I2C Serial Clock</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 4: Gateway Node Connection Map -->
+  <h2 id="gateway-node">📡 4. Gateway Node Connection Map</h2>
+  <p>The Gateway Node relies on external USB supply. It utilizes a similar SPI interface for the LoRa module, and connects an optional 0.96" SSD1306 OLED screen over I2C to show diagnostic sync states.</p>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ESP32-C6 Pin</th>
+          <th>Component Pin</th>
+          <th>Signal Name / Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:#FFFBF2">
+          <td><span class="pin-badge">USB 5V</span></td>
+          <td>USB-C Port</td>
+          <td>Main 5.0V power input from wall adapter</td>
+        </tr>
+        <tr style="background:#F0FDF4">
+          <td><span class="pin-badge">3.3V</span></td>
+          <td>LoRa & OLED VCC</td>
+          <td>Powers the receiver module and I2C display panel</td>
+        </tr>
+        <tr style="background:#FFFBF2">
+          <td><span class="pin-badge">GND</span></td>
+          <td>LoRa & OLED GND</td>
+          <td>Common Ground Reference</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 5</span></td>
+          <td>LoRa SCK</td>
+          <td>SPI Clock</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 19</span></td>
+          <td>LoRa MISO</td>
+          <td>SPI Master In Slave Out</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 27</span></td>
+          <td>LoRa MOSI</td>
+          <td>SPI Master Out Slave In</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 18</span></td>
+          <td>LoRa SS / NSS</td>
+          <td>SPI Slave Select / CS</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 14</span></td>
+          <td>LoRa RST</td>
+          <td>SPI Reset Line</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 26</span></td>
+          <td>LoRa DIO0</td>
+          <td>LoRa Packet Rx Notification Line</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 4</span></td>
+          <td>OLED SDA</td>
+          <td>I2C Data line for SSD1306 Display</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 15</span></td>
+          <td>OLED SCL</td>
+          <td>I2C Clock line for SSD1306 Display</td>
+        </tr>
+        <tr>
+          <td><span class="pin-badge">GPIO 16</span></td>
+          <td>OLED RST</td>
+          <td>OLED Screen Hardware Reset Pin</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 5: Noise & Safety Passives -->
+  <h2 id="passives">🛡️ 5. Noise and Safety Passives Placement</h2>
+  <p>To prevent sensor reading jitter and ensure RF stability during LoRa transmission bursts, the passive components in the hardware kit must be connected as follows:</p>
+
+  <ol>
+    <li>
+      <strong>Power Rail Smoothing (10µF Capacitor):</strong>
+      <br>Connect the <strong>10µF Electrolytic Capacitor</strong> directly across the buck converter outputs (`OUT+` to `OUT-`) on the breadboard power rails. Pay attention to polarity (the gray stripe indicates the negative leg).
+    </li>
+    <li style="margin-top: 10px;">
+      <strong>High-Frequency Decoupling (100nF Capacitor):</strong>
+      <br>Connect the <strong>100nF Ceramic Capacitor</strong> as close as possible to the LoRa module's VCC and GND pins. This suppresses high-frequency drops caused by RF transmitter pulses.
+    </li>
+    <li style="margin-top: 10px;">
+      <strong>DHT22 Pull-Up Resistor (4.7kΩ):</strong>
+      <br>Connect the <strong>4.7kΩ resistor</strong> between the DHT22 VCC (3.3V) pin and the DHT22 DATA pin. This keeps the single-wire data line high by default to prevent communication dropouts.
+    </li>
+  </ol>
+
+  <div class="info-box danger">
+    <h4>🚫 Deep Sleep Voltage Restrictions</h4>
+    During deep sleep, the ESP32-C6 power draw is in micro-amps. Ensure that your LM2596 quiescent current does not drain the battery: if you find excessive draw, bypass the LM2596 LED power light by scraping its tiny PCB tracer to maximize battery longevity in the field.
+  </div>
+
+  <!-- Section 6: Breadboard-Level Quick Wiring Visualizer -->
+  <h2 id="breadboard-vis">🔌 6. Quick Breadboard Wiring Visualizer</h2>
+  <p>Use these visual connection maps to complete your breadboard hookups quickly and reliably. Wires are color-coded to standard prototyping conventions.</p>
+  
+  <div class="nav-guide" style="background: rgba(0, 151, 157, 0.04); margin-bottom: 20px; display: flex; justify-content: flex-start; gap: 16px;">
+    <span>🎨 <strong>Color Legend:</strong></span>
+    <span class="wire-red">■ VCC (3.3V/5V)</span>
+    <span class="wire-black">■ GND (Ground)</span>
+    <span class="wire-yellow">■ SPI Bus</span>
+    <span class="wire-green">■ I2C Bus</span>
+    <span class="wire-blue">■ Signals</span>
+    <span class="wire-purple">■ Control</span>
+  </div>
+
+  <h3>Main Sensor Node (Node A) Quick Diagram</h3>
+  <div class="wiring-board">
+           +---------------------------------------------+
+           |          BREADBOARD POWER RAILS             |
+           | <span class="wire-red">[RED RAIL (+)] ◄─── LM2596 OUT(+) 5V</span>        |
+           | <span class="wire-black">[BLK RAIL (-)] ◄─── LM2596 OUT(-) GND</span>       |
+           +---------------------------------------------+
+              ▲   ▲
+              │   │  (Passive Smoothing: 10µF Cap [+-] across Rails)
+              │   │
+           +──┴───┴──────────────────────────────────────+
+           |             ESP32-C6 DEV KIT                |
+           |                                             |
+           |  (L) Pins                      (R) Pins     |
+           |  [  RST  ]                    <span class="wire-red">[  3.3V ] ────┼──► [To Sensors/LoRa VCC]</span>
+           |  [  3.3V ]                    <span class="wire-black">[  GND  ] ────┼──► [To GND Rail]</span>
+           |  <span class="wire-blue">[GPIO 36] ◄── Soil (AOUT)</span>    <span class="wire-red">[  5VIN ] ◄───┼──► [From RED Rail +5V]</span>
+           |  [GPIO  0]                    <span class="wire-green">[GPIO 22] ────┼──► INA219 SCL</span>
+           |  [GPIO  1]                    <span class="wire-green">[GPIO 21] ────┼──► INA219 SDA</span>
+           |  <span class="wire-blue">[GPIO  4] ◄── DHT22 DATA</span>     [GPIO 20]     |
+           |  <span class="wire-yellow">[GPIO  5] ───► LoRa SCK</span>      <span class="wire-yellow">[GPIO 19] ◄───┼──► LoRa MISO</span>
+           |  <span class="wire-yellow">[GPIO 18] ───► LoRa CS/NSS</span>   <span class="wire-yellow">[GPIO 27] ────┼──► LoRa MOSI</span>
+           |  <span class="wire-purple">[GPIO 14] ───► LoRa RST</span>      <span class="wire-purple">[GPIO 26] ◄───┼──► LoRa DIO0</span>
+           +---------------------------------------------+
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>LoRa SX1276 Pin</th>
+          <th>ESP32-C6 Pin</th>
+          <th>DHT22 Pin</th>
+          <th>ESP32-C6 Pin</th>
+          <th>Soil Moisture Pin</th>
+          <th>ESP32-C6 Pin</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="wire-red">VCC (3.3V)</span></td>
+          <td><span class="pin-badge">3.3V</span></td>
+          <td><span class="wire-red">1. VCC (3.3V)</span></td>
+          <td><span class="pin-badge">3.3V</span></td>
+          <td><span class="wire-red">VCC (3.3V)</span></td>
+          <td><span class="pin-badge">3.3V</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-black">GND</span></td>
+          <td><span class="pin-badge">GND</span></td>
+          <td><span class="wire-blue">2. DATA</span></td>
+          <td><span class="pin-badge">GPIO 4</span></td>
+          <td><span class="wire-black">GND</span></td>
+          <td><span class="pin-badge">GND</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">SCK</span></td>
+          <td><span class="pin-badge">GPIO 5</span></td>
+          <td>3. NC</td>
+          <td>-</td>
+          <td><span class="wire-blue">AOUT</span></td>
+          <td><span class="pin-badge">GPIO 36</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">MISO</span></td>
+          <td><span class="pin-badge">GPIO 19</span></td>
+          <td><span class="wire-black">4. GND</span></td>
+          <td><span class="pin-badge">GND</span></td>
+          <td colspan="2" style="background:#f1f5f9; text-align:center; font-weight:600;">INA219 Bus Connections</td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">MOSI</span></td>
+          <td><span class="pin-badge">GPIO 27</span></td>
+          <td colspan="2" rowspan="3" style="background:#f0fdf4; vertical-align:middle; text-align:center; color:#15803d; font-size:11px;">
+            <strong>DHT22 Pull-Up:</strong><br>Connect a 4.7kΩ resistor between VCC (3.3V) and DATA (GPIO 4) pins.
+          </td>
+          <td><span class="wire-green">SDA</span></td>
+          <td><span class="pin-badge">GPIO 21</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">CS / NSS</span></td>
+          <td><span class="pin-badge">GPIO 18</span></td>
+          <td><span class="wire-green">SCL</span></td>
+          <td><span class="pin-badge">GPIO 22</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-purple">RST</span></td>
+          <td><span class="pin-badge">GPIO 14</span></td>
+          <td><span class="wire-red">VIN(+)</span></td>
+          <td>Battery Holder (+)</td>
+        </tr>
+        <tr>
+          <td><span class="wire-purple">DIO0</span></td>
+          <td><span class="pin-badge">GPIO 26</span></td>
+          <td colspan="2" style="background:#f0fdf4; text-align:center; color:#15803d; font-size:11px;">
+            <strong>LoRa Decoupling:</strong><br>100nF Cap across VCC and GND.
+          </td>
+          <td><span class="wire-red">VIN(-)</span></td>
+          <td>LM2596 IN(+)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Gateway Node (Node B) Quick Diagram</h3>
+  <div class="wiring-board">
+           +---------------------------------------------+
+           |          GATEWAY BREADBOARD POWER           |
+           | <span class="wire-red">[VCC RAIL (+)] ◄─── ESP32 3.3V OUT</span>        |
+           | <span class="wire-black">[GND RAIL (-)] ◄─── ESP32 GND OUT</span>         |
+           +---------------------------------------------+
+              ▲   ▲
+              │   │
+           +──┴───┴──────────────────────────────────────+
+           |             ESP32-C6 GATEWAY                |
+           |                                             |
+           |  (L) Pins                      (R) Pins     |
+           |  [  RST  ]                    <span class="wire-red">[  3.3V ] ────┼──► [VCC RAIL (+)]</span>
+           |  [  3.3V ]                    <span class="wire-black">[  GND  ] ────┼──► [GND RAIL (-)]</span>
+           |  [GPIO 36]                    [  5VIN ] ◄───┼──► [5V USB Power Input]
+           |  <span class="wire-blue">[GPIO  4] ───► OLED SDA</span>      [GPIO 22]     |
+           |  <span class="wire-yellow">[GPIO  5] ───► LoRa SCK</span>      [GPIO 21]     |
+           |  <span class="wire-yellow">[GPIO 18] ───► LoRa CS/NSS</span>   <span class="wire-yellow">[GPIO 19] ◄───┼──► LoRa MISO</span>
+           |  <span class="wire-purple">[GPIO 14] ───► LoRa RST</span>      <span class="wire-yellow">[GPIO 27] ────┼──► LoRa MOSI</span>
+           |  <span class="wire-blue">[GPIO 15] ───► OLED SCL</span>      <span class="wire-purple">[GPIO 26] ◄───┼──► LoRa DIO0</span>
+           |  <span class="wire-purple">[GPIO 16] ───► OLED RST</span>      [GPIO 20]     |
+           +---------------------------------------------+
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>LoRa RX Pin</th>
+          <th>ESP32-C6 Pin</th>
+          <th>SSD1306 OLED Pin</th>
+          <th>ESP32-C6 Pin</th>
+          <th>Required Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="wire-red">VCC</span></td>
+          <td><span class="pin-badge">3.3V</span></td>
+          <td><span class="wire-red">VCC</span></td>
+          <td><span class="pin-badge">3.3V</span></td>
+          <td rowspan="4" style="background:#f0fdf4; vertical-align:middle; text-align:center; color:#15803d; font-size:11px;">
+            <strong>Continuous Power:</strong><br>Ensure the Gateway board remains powered via a USB-C cable hooked to the 5V/2A mains wall plug adapter.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="wire-black">GND</span></td>
+          <td><span class="pin-badge">GND</span></td>
+          <td><span class="wire-black">GND</span></td>
+          <td><span class="pin-badge">GND</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">SCK</span></td>
+          <td><span class="pin-badge">GPIO 5</span></td>
+          <td><span class="wire-blue">SDA</span></td>
+          <td><span class="pin-badge">GPIO 4</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">MISO</span></td>
+          <td><span class="pin-badge">GPIO 19</span></td>
+          <td><span class="wire-blue">SCL</span></td>
+          <td><span class="pin-badge">GPIO 15</span></td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">MOSI</span></td>
+          <td><span class="pin-badge">GPIO 27</span></td>
+          <td><span class="wire-purple">RST</span></td>
+          <td><span class="pin-badge">GPIO 16</span></td>
+          <td rowspan="2" style="background:#f1f5f9; text-align:center; font-size:11px;">
+            <strong>OLED Setup:</strong> Uses software-driven I2C connection paths on pins 4 & 15.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="wire-yellow">CS / NSS</span></td>
+          <td><span class="pin-badge">GPIO 18</span></td>
+          <td colspan="2">-</td>
+        </tr>
+        <tr>
+          <td><span class="wire-purple">RST</span></td>
+          <td><span class="pin-badge">GPIO 14</span></td>
+          <td colspan="2">-</td>
+          <td rowspan="2" style="background:#f0fdf4; text-align:center; color:#15803d; font-size:11px;">
+            <strong>LoRa Decoupling:</strong><br>Connect a 100nF decoupling capacitor across VCC and GND.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="wire-purple">DIO0</span></td>
+          <td><span class="pin-badge">GPIO 26</span></td>
+          <td colspan="2">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">Solar Soil IoT Project — Hardware Setup Assembly Guide, June 2026.</div>
+</div>
+
+</body>
+</html>

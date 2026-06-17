@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Firmware Upload Guide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: #F8FAFC; color: #1E293B; padding: 40px; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 50px; border-radius: 24px; box-shadow: 0 4px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,151,157,0.15); }
+    h1 { font-size: 28px; font-weight: 700; color: #00979D; margin-bottom: 4px; }
+    .subtitle { color: #64748B; font-size: 14px; margin-bottom: 30px; }
+    h2 { font-size: 18px; font-weight: 600; color: #0F172A; margin-top: 30px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #00979D; }
+    h3 { font-size: 15px; font-weight: 600; color: #0F172A; margin-top: 20px; margin-bottom: 6px; }
+    p, li { font-size: 14px; color: #334155; }
+    ul, ol { padding-left: 20px; margin: 8px 0 12px 0; }
+    li { margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 16px 0; font-size: 13px; }
+    th, td { padding: 8px 12px; text-align: left; border: 1px solid #E2E8F0; }
+    th { background: #F1F5F9; font-weight: 600; color: #0F172A; }
+    code { font-family: 'JetBrains Mono', monospace; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    pre { background: #1E293B; color: #E2E8F0; padding: 14px 16px; border-radius: 10px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5; margin: 8px 0 12px 0; }
+    .box { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 10px; padding: 14px 16px; margin: 12px 0; font-size: 13px; color: #166534; }
+    .box.warn { background: #FEF2F2; border-color: #FCA5A5; color: #991B1B; }
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #94A3B8; text-align: center; }
+    .badge { display: inline-block; background: #00979D; color: white; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+    @media print { body { padding: 0; background: white; } .container { box-shadow: none; border: none; padding: 30px; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header-row">
+    <h1>ESP32 Firmware Upload Guide</h1>
+    <span class="badge">Solar Soil IoT</span>
+  </div>
+  <p class="subtitle">Instructions for uploading firmware to Sensor Node and Gateway Node boards</p>
+
+  <h2>Overview</h2>
+  <p>Two ESP32 boards need firmware:</p>
+  <table>
+    <tr><th>Board</th><th>File</th><th>Role</th></tr>
+    <tr><td>Sensor Node</td><td><code>lora/node.ino</code></td><td>Reads sensors, sends via LoRa, deep sleeps</td></tr>
+    <tr><td>Gateway Node</td><td><code>lora/gateway.ino</code></td><td>Receives LoRa, forwards to MQTT over WiFi</td></tr>
+  </table>
+
+  <h2>1. Install Required Libraries</h2>
+  <p>In Arduino IDE: <strong>Sketch → Include Library → Manage Libraries</strong></p>
+  <table>
+    <tr><th>Library</th><th>Author</th><th>Used By</th></tr>
+    <tr><td><code>LoRa</code></td><td>Sandeep Mistry</td><td>Both</td></tr>
+    <tr><td><code>ArduinoJson</code></td><td>Benoit Blanchon</td><td>node.ino</td></tr>
+    <tr><td><code>DHT sensor library</code></td><td>Adafruit</td><td>node.ino</td></tr>
+    <tr><td><code>Adafruit INA219</code></td><td>Adafruit</td><td>node.ino</td></tr>
+    <tr><td><code>PubSubClient</code></td><td>Nick O'Leary</td><td>gateway.ino</td></tr>
+    <tr><td><code>WiFi</code></td><td>Built-in (ESP32 core)</td><td>gateway.ino</td></tr>
+  </table>
+  <div class="box"><strong>ESP32 Board Support:</strong><br>
+    File → Preferences → Additional Boards Manager URLs:<br>
+    <code>https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json</code><br>
+    Tools → Board → Boards Manager → search "ESP32" → Install
+  </div>
+
+  <h2>2. Wiring — Sensor Node (node.ino)</h2>
+  <table>
+    <tr><th>ESP32 Pin</th><th>Connected To</th></tr>
+    <tr><td>GPIO 4</td><td>DHT22 Data</td></tr>
+    <tr><td>GPIO 36 (ADC0)</td><td>Soil Moisture Sensor (analog out)</td></tr>
+    <tr><td>GPIO 21 (SDA)</td><td>INA219 SDA</td></tr>
+    <tr><td>GPIO 22 (SCL)</td><td>INA219 SCL</td></tr>
+    <tr><td>GPIO 5 (SCK)</td><td>LoRa Module SCK</td></tr>
+    <tr><td>GPIO 19 (MISO)</td><td>LoRa Module MISO</td></tr>
+    <tr><td>GPIO 27 (MOSI)</td><td>LoRa Module MOSI</td></tr>
+    <tr><td>GPIO 18 (SS)</td><td>LoRa Module NSS</td></tr>
+    <tr><td>GPIO 14 (RST)</td><td>LoRa Module RST</td></tr>
+    <tr><td>GPIO 26 (DIO0)</td><td>LoRa Module DIO0</td></tr>
+  </table>
+
+  <h2>3. Wiring — Gateway Node (gateway.ino)</h2>
+  <p>Same LoRa pins as node above. No extra sensors — WiFi handles internet.</p>
+
+  <h2>4. Configure Before Uploading</h2>
+  <h3>node.ino</h3>
+  <p><strong>Line 38</strong> — Change frequency if needed:</p>
+  <pre>  if (!LoRa.begin(868E6))   // 868 MHz for Europe/India
+  if (!LoRa.begin(915E6))   // 915 MHz for US/Americas</pre>
+
+  <h3>gateway.ino</h3>
+  <p><strong>Line 5-6</strong> — Set your WiFi credentials:</p>
+  <pre>const char* ssid = "YourWiFiName";
+const char* password = "YourWiFiPassword";</pre>
+  <p><strong>Line 18</strong> — Match LoRa frequency with node.</p>
+
+  <h2>5. Upload Steps</h2>
+  <ol>
+    <li><strong>Sensor Node:</strong> Open <code>lora/node.ino</code> in Arduino IDE</li>
+    <li>Tools → Board → ESP32 Arduino → select your ESP32 model</li>
+    <li>Tools → Port → select the COM port</li>
+    <li>Click <strong>Upload</strong> (→ button)</li>
+    <li>Open Serial Monitor (Tools → Serial Monitor, 115200 baud) to verify</li>
+    <li style="margin-top:10px"><strong>Gateway Node:</strong> Repeat with <code>lora/gateway.ino</code></li>
+  </ol>
+
+  <h2>6. Verification</h2>
+  <p><strong>Node Serial Monitor output:</strong></p>
+  <pre>Sending packet: {"temp":28,"humidity":65,"soil":42,"v":5.2,"current":410}
+Going to sleep...</pre>
+  <p><em>Wakes every 15 minutes to send again.</em></p>
+
+  <p><strong>Gateway Serial Monitor output:</strong></p>
+  <pre>Connected to MQTT Broker
+Forwarding to MQTT: {"temp":28,"humidity":65,"soil":42,"v":5.2,"current":410}</pre>
+
+  <h2>7. Troubleshooting</h2>
+  <table>
+    <tr><th>Problem</th><th>Fix</th></tr>
+    <tr><td>LoRa init failed</td><td>Check wiring, ensure frequency matches between node & gateway</td></tr>
+    <tr><td>DHT sensor failed</td><td>Check GPIO 4 wiring, try DHT11 instead of DHT22</td></tr>
+    <tr><td>WiFi not connecting</td><td>Verify SSID/password, ensure 2.4 GHz band</td></tr>
+    <tr><td>MQTT not connecting</td><td>Gateway needs internet access via WiFi</td></tr>
+    <tr><td>No data on dashboard</td><td>Run <code>lora/simulator.py</code> to test without hardware</td></tr>
+  </table>
+
+  <div class="footer">Solar Soil IoT — College Project, May 2026</div>
+</div>
+</body>
+</html>
