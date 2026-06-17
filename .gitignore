@@ -9,5 +9,6 @@ frontend/.dart_tool/
 *.tar
 *.zip
 .env
+backend/ai_config.json
 production/
 *.log

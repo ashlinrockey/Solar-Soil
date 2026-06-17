@@ -1,0 +1,6 @@
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "baseUrl": "",
+  "apiKey": "YOUR_API_KEY_HERE"
+}
