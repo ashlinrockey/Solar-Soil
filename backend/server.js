@@ -589,7 +589,8 @@ function detectAnomalies(reading, history) {
 // MQTT CLIENT LISTENER
 // ─────────────────────────────────────────────────────────────────────────────
 const mqttBroker = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
-const mqttTopic = process.env.MQTT_TOPIC || 'solarsoil/nodeA';
+// Subscribe to all solarsoil/nodes (A, B, C, …)
+const mqttTopic = process.env.MQTT_TOPIC || 'solarsoil/#';
 
 let mqttConnected = false;
 const mqttStatusBroadcast = () => {
