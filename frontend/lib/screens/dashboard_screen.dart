@@ -185,7 +185,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
-    // Recreate the dynamic floating background blob mesh animations
     _blobController = AnimationController(
       duration: const Duration(seconds: 15),
       vsync: this,
@@ -280,6 +279,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               bottom: isDesktop ? 24 : 4,
               child: _buildAIChatFAB(provider),
             ),
+
         ],
       ),
     );
@@ -3258,6 +3258,77 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         
         const SizedBox(height: 24),
 
+        // MQTT Connection Monitoring
+        GlassCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.wifi_tethering_outlined, color: Color(0xFF00979D), size: 20),
+                  const SizedBox(width: 10),
+                  Text("$_gardenName $_gardenNumber · MQTT Link",
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.swap_horiz_outlined, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 10),
+                  Text("MQTT Broker", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  const Spacer(),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: provider.isMqttConnected ? const Color(0xFF10B981) : Colors.redAccent,
+                      boxShadow: provider.isMqttConnected
+                          ? [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.5), blurRadius: 4)]
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text("broker.emqx.io:1883",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                ],
+              ),
+              const Divider(color: Colors.black12, height: 20),
+              Row(
+                children: [
+                  Icon(Icons.inbox_outlined, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 10),
+                  Text("Packets Received", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  const Spacer(),
+                  Text("${provider.mqttPacketCount}",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                ],
+              ),
+              const Divider(color: Colors.black12, height: 20),
+              Row(
+                children: [
+                  Icon(Icons.access_time_outlined, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 10),
+                  Text("Last Packet", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  const Spacer(),
+                  Text(
+                    provider.lastMqttTime != null
+                        ? _formatTime(provider.lastMqttTime!)
+                        : "---",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                        color: provider.lastMqttTime != null && DateTime.now().difference(provider.lastMqttTime!).inSeconds < 120
+                            ? const Color(0xFF10B981)
+                            : Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
         // Split Layout: Pin config table vs node specs — responsive via LayoutBuilder
         LayoutBuilder(
           builder: (context, constraints) {
@@ -4095,77 +4166,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               child: GlassCard(
                 padding: const EdgeInsets.all(20),
                 child: _buildModelPerformanceCard(provider),
-              ),
-            ),
-            SizedBox(
-              width: isDesktop ? 320 : double.infinity,
-              child: GlassCard(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.wifi_tethering_outlined, color: Color(0xFF00979D), size: 20),
-                        const SizedBox(width: 10),
-                        const Text("Connection",
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.swap_horiz_outlined, size: 14, color: Colors.grey[400]),
-                        const SizedBox(width: 10),
-                        Text("MQTT Broker", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                        const Spacer(),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: provider.isMqttConnected ? const Color(0xFF10B981) : Colors.redAccent,
-                            boxShadow: provider.isMqttConnected
-                                ? [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.5), blurRadius: 4)]
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text("broker.emqx.io:1883",
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
-                      ],
-                    ),
-                    const Divider(color: Colors.black12, height: 20),
-                    Row(
-                      children: [
-                        Icon(Icons.inbox_outlined, size: 14, color: Colors.grey[400]),
-                        const SizedBox(width: 10),
-                        Text("Packets Received", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                        const Spacer(),
-                        Text("${provider.mqttPacketCount}",
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
-                      ],
-                    ),
-                    const Divider(color: Colors.black12, height: 20),
-                    Row(
-                      children: [
-                        Icon(Icons.access_time_outlined, size: 14, color: Colors.grey[400]),
-                        const SizedBox(width: 10),
-                        Text("Last Packet", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                        const Spacer(),
-                        Text(
-                          provider.lastMqttTime != null
-                              ? _formatTime(provider.lastMqttTime!)
-                              : "---",
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                              color: provider.lastMqttTime != null && DateTime.now().difference(provider.lastMqttTime!).inSeconds < 120
-                                  ? const Color(0xFF10B981)
-                                  : Colors.grey[500]),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               ),
             ),
             SizedBox(

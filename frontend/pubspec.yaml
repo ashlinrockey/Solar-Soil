@@ -43,3 +43,4 @@ flutter:
   assets:
     - assets/
     - assets/plant_loader.json
+    - assets/loader.json
