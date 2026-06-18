@@ -50,7 +50,7 @@ spec:
         - name: MQTT_BROKER
           value: "mqtt://broker.emqx.io:1883"
         - name: MQTT_TOPIC
-          value: "solarsoil/nodeA"
+          value: "solarsoil/#"
       ports:
         - containerPort: 5000
           hostPort: 5000

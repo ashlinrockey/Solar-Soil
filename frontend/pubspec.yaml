@@ -30,6 +30,9 @@ dependencies:
   # Launch URLs on mobile (CSV export, etc.)
   url_launcher: ^6.2.6
 
+  # Lottie animations
+  lottie: ^3.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -39,3 +42,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/plant_loader.json

@@ -334,7 +334,9 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    window.location.href = '/dashboard';
+                    const uname = (data.user?.username) || username;
+                    sessionStorage.setItem('solarsoil_username', uname);
+                    window.location.href = '/dashboard?username=' + encodeURIComponent(uname);
                 } else {
                     showError(data.message || 'Invalid username or password.');
                     setLoading(false);

@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import ExcelJS from 'exceljs';
 import { writeTelemetry, getHistory } from './influxService.js';
-import { authenticateUser, changePassword } from './authService.js';
+import { authenticateUser, changePassword, changeUsername } from './authService.js';
 import { computeHealthScore, computeIrrigationAdvice, askGemini, scanLeafImage, getAIConfig, setAIConfig, testAIConnection, getAIMetrics } from './aiService.js';
 
 dotenv.config();
@@ -123,8 +123,11 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/change-password', async (req, res) => {
   const { username, oldPassword, newPassword } = req.body;
 
-  if (!username || !oldPassword || !newPassword) {
-    return res.status(400).json({ success: false, message: 'Username, current password, and new password are required.' });
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Session expired. Please log out and log in again.' });
+  }
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Current password and new password are required.' });
   }
   if (newPassword.length < 4) {
     return res.status(400).json({ success: false, message: 'New password must be at least 4 characters.' });
@@ -133,6 +136,24 @@ app.post('/api/auth/change-password', async (req, res) => {
   const result = await changePassword(username, oldPassword, newPassword);
   if (result.success) {
     res.json({ success: true, message: result.message });
+  } else {
+    res.status(400).json({ success: false, message: result.message });
+  }
+});
+
+app.post('/api/auth/change-username', async (req, res) => {
+  const { currentUsername, newUsername, password } = req.body;
+
+  if (!currentUsername || !newUsername || !password) {
+    return res.status(400).json({ success: false, message: 'Current username, new username, and password are required.' });
+  }
+  if (newUsername.length < 3) {
+    return res.status(400).json({ success: false, message: 'New username must be at least 3 characters.' });
+  }
+
+  const result = await changeUsername(currentUsername, newUsername, password);
+  if (result.success) {
+    res.json({ success: true, message: result.message, newUsername: result.newUsername });
   } else {
     res.status(400).json({ success: false, message: result.message });
   }

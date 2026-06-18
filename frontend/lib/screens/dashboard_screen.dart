@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:js' as js;
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -13,6 +14,7 @@ import '../utils/redirect.dart';
 import 'login_screen.dart';
 import 'spinach_garden_detail_screen.dart';
 import 'dart:ui' as ui;
+import 'package:lottie/lottie.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -30,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   // AI Chat state
   bool _isChatOpen = false;
+  bool _isListening = false;
   final TextEditingController _chatInputController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
 
@@ -233,8 +236,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      floatingActionButton: _buildAIChatFAB(provider),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       bottomNavigationBar: !isDesktop ? _buildMobileBottomNavBar(provider) : null,
       body: Stack(
         children: [
@@ -271,6 +272,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
           // AI Chat Slide-over Panel
           if (_isChatOpen) _buildAIChatPanel(provider, isDesktop),
+
+          // AI Chat FAB (hidden when chat is open)
+          if (!_isChatOpen)
+            Positioned(
+              right: isDesktop ? 24 : 16,
+              bottom: isDesktop ? 24 : 4,
+              child: _buildAIChatFAB(provider),
+            ),
         ],
       ),
     );
@@ -665,19 +674,38 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
           ],
         ),
-        ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.add, size: 16, color: Colors.white),
-          label: const Text("Add Node", style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00979D),
-            elevation: 3,
-            shadowColor: const Color(0xFF00979D).withOpacity(0.2),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Feature is under development"),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add, size: 16, color: Colors.white),
+              label: const Text("Add Node", style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00979D),
+                elevation: 3,
+                shadowColor: const Color(0xFF00979D).withOpacity(0.2),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.logout, color: Color(0xFFEF4444)),
+              onPressed: () => _handleLogout(context),
+              tooltip: "Log Out",
+            ),
+          ],
         )
       ],
     );
@@ -1869,7 +1897,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final double panelHeight = isDesktop ? 520 : (size.height < 700 ? size.height * 0.55 : 440);
     return Positioned(
       right: isDesktop ? 16 : 8,
-      bottom: isDesktop ? 16 : 72,
+      bottom: isDesktop ? 16 : 8,
       width: panelWidth.clamp(280.0, 480.0),
       height: panelHeight.clamp(300.0, 600.0),
       child: ClipRRect(
@@ -1992,6 +2020,24 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           },
                         ),
                       ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: provider.isAiTyping ? null : _startSpeechToText,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: _isListening ? Colors.red.withOpacity(0.1) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            _isListening ? Icons.mic : Icons.mic_none,
+                            color: _isListening ? Colors.redAccent : Colors.grey[500],
+                            size: 18,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       GestureDetector(
                         onTap: provider.isAiTyping ? null : () => _sendChatMessage(provider),
@@ -2045,6 +2091,50 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     });
   }
 
+  void _startSpeechToText() async {
+    try {
+      final supported = js.context.callMethod('eval', ['''
+        !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+      ''']);
+      if (supported != true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Speech not supported in this browser"), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
+          );
+        }
+        return;
+      }
+      setState(() => _isListening = true);
+      js.context.callMethod('eval', ['''
+        (function() {
+          var sr = window.SpeechRecognition || window.webkitSpeechRecognition;
+          var r = new sr();
+          r.lang = 'en-US';
+          r.interimResults = false;
+          r.continuous = false;
+          r.onresult = function(e) {
+            window._srResult = e.results[e.results.length - 1][0].transcript;
+          };
+          r.onerror = function() { window._srResult = ''; };
+          r.onend = function() { window._srDone = true; };
+          r.start();
+        })()
+      ''']);
+      while (true) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (js.context['_srDone'] == true) {
+          final transcript = js.context['_srResult'] as String? ?? '';
+          js.context.callMethod('eval', ['delete window._srResult; delete window._srDone;']);
+          if (transcript.isNotEmpty) {
+            _chatInputController.text = transcript;
+          }
+          break;
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isListening = false);
+  }
+
   Widget _buildChatEmptyState(TelemetryProvider provider) {
     final suggestions = [
       'Is my ${_gardenName.split(' ').first} stressed?',
@@ -2057,8 +2147,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.psychology_alt_outlined, size: 36, color: const Color(0xFF00A896)),
-          const SizedBox(height: 8),
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: Lottie.asset('assets/plant_loader.json'),
+          ),
+          const SizedBox(height: 4),
           const Text('Ask anything about your crop',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B))),
           const SizedBox(height: 4),

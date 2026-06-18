@@ -295,6 +295,10 @@ class TelemetryProvider extends ChangeNotifier {
 
   void init() {
     addTerminalLog("Connecting to Web Application Gateway...");
+    final uri = Uri.base;
+    if (uri.queryParameters.containsKey('username')) {
+      loggedInUsername = uri.queryParameters['username']!;
+    }
     fetchHistory();
     _connectWebSocket();
   }
@@ -649,6 +653,23 @@ class TelemetryProvider extends ChangeNotifier {
           'username': loggedInUsername,
           'oldPassword': oldPassword,
           'newPassword': newPassword,
+        }),
+      );
+      return json.decode(res.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Cannot connect to server.'};
+    }
+  }
+
+  Future<Map<String, dynamic>> changeUsername(String newUsername, String password) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseHttpUrl/api/auth/change-username'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'currentUsername': loggedInUsername,
+          'newUsername': newUsername,
+          'password': password,
         }),
       );
       return json.decode(res.body);
