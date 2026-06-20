@@ -53,12 +53,14 @@ void setup() {
   float voltage = ina219.getBusVoltage_V();
   float current = ina219.getCurrent_mA();
 
-  // Handle read failures
-  if (isnan(temp) || isnan(humidity)) {
-    Serial.println("Failed to read from DHT sensor!");
-    temp = 24.0;
-    humidity = 55.0;
-  }
+  // Guard against NaN from failed sensor reads
+  if (isnan(temp)) { temp = 24.0; }
+  if (isnan(humidity)) { humidity = 55.0; }
+  if (isnan(voltage)) { voltage = 0.0; }
+  if (isnan(current)) { current = 0.0; }
+
+  temp = constrain(temp, -10, 60);
+  humidity = constrain(humidity, 0, 100);
 
   // 2. Package in JSON
   StaticJsonDocument<256> doc;

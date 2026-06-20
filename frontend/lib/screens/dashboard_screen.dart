@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:js' as js;
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -8,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../providers/telemetry_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/metric_card.dart';
+import '../widgets/rootwise_assistant_sheet.dart';
 import '../widgets/telemetry_chart.dart';
 import '../widgets/terminal_monitor.dart';
 import '../utils/redirect.dart';
@@ -30,18 +30,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   String _selectedStatusFilter = "All";
   String _selectedTimeFilter = "24h";
 
-  // AI Chat state
-  bool _isChatOpen = false;
-  bool _isListening = false;
-  final TextEditingController _chatInputController = TextEditingController();
-  final ScrollController _chatScrollController = ScrollController();
-
   // Garden zone editing state
   String _gardenName = "Spinach Garden";
   String _gardenNumber = "08";
   String _zoneId = "PL-02J";
   String _coverageArea = "200 m²";
   bool _gardenConfigLoaded = false;
+
+  // Notifications
+  final List<Map<String, String>> _notifications = [
+    { 'type': 'warning', 'message': 'Sensor-005-E high moisture: 81.9%', 'time': '2 min ago' },
+    { 'type': 'critical', 'message': 'Sensor-007-G offline', 'time': '15 min ago' },
+    { 'type': 'info', 'message': 'Battery low: Sensor-003-C (18.2%)', 'time': '1 hour ago' },
+  ];
+
+  String _activeChartMetric = 'moisture';
 
   // AI Config state
   bool _aiConfigLoaded = false;
@@ -82,6 +85,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   // Password change state
   bool _passwordChangeEnabled = false;
+  bool _usernameChangeEnabled = false;
+  bool _usernameSaving = false;
+  String? _usernameStatus;
+  final _newUsernameController = TextEditingController();
+  final _usernamePasswordController = TextEditingController();
+  bool _usernamePasswordVisible = false;
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -170,6 +179,35 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     }
   }
 
+  Future<void> _changeUsername(TelemetryProvider provider) async {
+    final newUsername = _newUsernameController.text;
+    final password = _usernamePasswordController.text;
+
+    if (newUsername.isEmpty || password.isEmpty) {
+      setState(() => _usernameStatus = '✗ All fields are required.');
+      return;
+    }
+    if (newUsername.length < 3) {
+      setState(() => _usernameStatus = '✗ Username must be at least 3 characters.');
+      return;
+    }
+
+    setState(() { _usernameSaving = true; _usernameStatus = null; });
+    final result = await provider.changeUsername(newUsername, password);
+    setState(() {
+      _usernameSaving = false;
+      _usernameStatus = result['success'] == true ? '✓ Username updated!' : '✗ ${result['message']}';
+    });
+    if (result['success'] == true) {
+      _newUsernameController.clear();
+      _usernamePasswordController.clear();
+      setState(() => _usernameChangeEnabled = false);
+      if (result['newUsername'] != null) {
+        provider.loggedInUsername = result['newUsername'];
+      }
+    }
+  }
+
   Future<void> _testAIConnection(TelemetryProvider provider) async {
     setState(() => _aiConfigStatus = 'Testing connection...');
     final result = await provider.testAIConnection();
@@ -195,11 +233,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void dispose() {
     _stopMetricsPolling();
     _blobController.dispose();
-    _chatInputController.dispose();
-    _chatScrollController.dispose();
     _oldPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _newUsernameController.dispose();
+    _usernamePasswordController.dispose();
     super.dispose();
   }
 
@@ -269,16 +307,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
           ),
 
-          // AI Chat Slide-over Panel
-          if (_isChatOpen) _buildAIChatPanel(provider, isDesktop),
-
-          // AI Chat FAB (hidden when chat is open)
-          if (!_isChatOpen)
-            Positioned(
-              right: isDesktop ? 24 : 16,
-              bottom: isDesktop ? 24 : 4,
-              child: _buildAIChatFAB(provider),
+          // AI Chat FAB
+          Positioned(
+            right: isDesktop ? 24 : 16,
+            bottom: isDesktop ? 24 : 4,
+            child: FloatingActionButton(
+              onPressed: () => _openAIChat(provider),
+              backgroundColor: const Color(0xFF00979D),
+              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
             ),
+          ),
 
         ],
       ),
@@ -343,7 +381,153 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  // --- DESKTOP SIDEBAR WIDGET ---
+  // ── CHART METRIC TOGGLE ──────────────────────────────────────────────
+  Widget _buildMetricToggle(String metric, String label) {
+    final isActive = _activeChartMetric == metric;
+    final Map<String, Color> colors = {
+      'moisture': const Color(0xFF3B82F6),
+      'temperature': const Color(0xFFF43F5E),
+      'humidity': const Color(0xFF10B981),
+      'light': const Color(0xFFF59E0B),
+    };
+    final color = colors[metric] ?? const Color(0xFF00979D);
+    return GestureDetector(
+      onTap: () => setState(() => _activeChartMetric = metric),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.12) : Colors.white.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? color.withOpacity(0.4) : Colors.black12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isActive ? color : Colors.grey[500],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── NOTIFICATION BELL ──────────────────────────────────────────────────
+  Widget _buildNotificationBell() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined, color: Color(0xFF1E293B), size: 22),
+          onPressed: () => _showNotificationPanel(context),
+          tooltip: "Notifications",
+        ),
+        Positioned(
+          right: 4,
+          top: 4,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEF4444),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${_notifications.length}',
+              style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showNotificationPanel(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 80),
+        contentPadding: EdgeInsets.zero,
+        content: GlassCard(
+          padding: const EdgeInsets.all(20),
+          borderRadius: 20,
+          child: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Notifications", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                if (_notifications.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(child: Text("No notifications", style: TextStyle(color: Colors.grey))),
+                  )
+                else
+                  ..._notifications.map((n) => _buildNotificationItem(n)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(Map<String, String> n) {
+    IconData icon;
+    Color color;
+    switch (n['type']) {
+      case 'critical':
+        icon = Icons.error_outline;
+        color = const Color(0xFFEF4444);
+        break;
+      case 'warning':
+        icon = Icons.warning_amber_rounded;
+        color = const Color(0xFFF59E0B);
+        break;
+      default:
+        icon = Icons.info_outline;
+        color = const Color(0xFF3B82F6);
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(n['message'] ?? '', style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B))),
+                const SizedBox(height: 2),
+                Text(n['time'] ?? '', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── DESKTOP SIDEBAR ────────────────────────────────────────────────────
   Widget _buildSidebar(TelemetryProvider provider) {
     return Container(
       width: 260,
@@ -636,6 +820,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           ),
           Row(
             children: [
+              _buildNotificationBell(),
               IconButton(
                 icon: const Icon(Icons.logout, color: Color(0xFFEF4444)),
                 onPressed: () => _handleLogout(context),
@@ -911,81 +1096,158 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       },
       borderRadius: BorderRadius.circular(16),
       child: GlassCard(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
-                  ),
-                  child: const Icon(Icons.grass, color: Color(0xFF10B981)),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            text: "$_gardenName ",
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                            children: [
-                              TextSpan(text: _gardenNumber, style: const TextStyle(color: Color(0xFF00979D))),
-                            ],
-                          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 500;
+            return Padding(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
                         ),
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () => _showGardenEditDialog(provider),
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00979D).withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Icon(Icons.edit_outlined, size: 12, color: Color(0xFF00979D)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "ACTIVE MONITORING ZONE",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        color: Colors.grey[500],
+                        child: const Icon(Icons.grass, color: Color(0xFF10B981)),
                       ),
-                    )
-                  ],
-                )
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "$_gardenName $_gardenNumber",
+                              softWrap: true,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "ACTIVE MONITORING ZONE",
+                              softWrap: true,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showGardenEditDialog(provider),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00979D).withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF00979D)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildInfoBadge("ZONE ID", _zoneId),
+                      _buildInfoBadge("COVERAGE AREA", _coverageArea),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00979D).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_forward_ios, color: Color(0xFF00979D), size: 16),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataStatusBar(TelemetryProvider provider) {
+    final isLive = provider.isConnected;
+    final lastTime = provider.lastMqttTime;
+    final isStale = lastTime != null && DateTime.now().difference(lastTime).inSeconds > 300;
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isLive ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+              boxShadow: [
+                BoxShadow(
+                  color: (isLive ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.4),
+                  blurRadius: 6,
+                ),
               ],
             ),
-            Row(
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoBadge("ZONE ID", _zoneId),
-                const SizedBox(width: 12),
-                _buildInfoBadge("COVERAGE AREA", _coverageArea),
-                const SizedBox(width: 12),
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  color: Color(0xFF00979D),
-                  size: 14,
+                Text(
+                  isLive ? '📡 Live Data' : '🔄 Demo Mode (Sensor Offline)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: isLive ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                  ),
                 ),
+                if (!isLive)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '⚠️ Sensor-007-G is offline. Attempting to reconnect...',
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                  ),
+                ),
+                _buildNotificationBell(),
               ],
-            )
-          ],
-        ),
+            ),
+          ),
+          if (lastTime != null)
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatTime(lastTime),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      color: isLive ? const Color(0xFF1E293B) : Colors.grey[500],
+                    ),
+                  ),
+                  if (isStale)
+                    Text(
+                      '* Simulated data',
+                      style: TextStyle(fontSize: 8, color: const Color(0xFFF59E0B)),
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1105,11 +1367,17 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         children: [
           Text(
             label,
+            softWrap: true,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(color: Colors.grey[500], fontSize: 8, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 2),
           Text(
             value,
+            softWrap: true,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Color(0xFF1E293B), fontSize: 11, fontWeight: FontWeight.bold),
           )
         ],
@@ -1119,6 +1387,65 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   // --- KEY METRICS GRID ---
   Widget _buildMetricsGrid(TelemetryProvider provider, bool isDesktop) {
+    final cards = [
+      MetricCard(
+        title: "Avg Soil Moisture",
+        value: provider.soil.toStringAsFixed(0),
+        unit: "%",
+        icon: Icons.water_drop,
+        themeColor: const Color(0xFF3B82F6),
+        progress: provider.soil / 100,
+        badgeText: "↑ 12%",
+        subtext: "Keep monitoring to ensure it remains consistent above 40%.",
+        lastUpdated: provider.lastMqttTime,
+        rawValue: provider.soil,
+        optimalMin: 40,
+        optimalMax: 70,
+      ),
+      MetricCard(
+        title: "Solar Panel Output",
+        value: provider.v.toStringAsFixed(1),
+        unit: "V",
+        icon: Icons.solar_power,
+        themeColor: Colors.amber[500]!,
+        progress: provider.v / 6.0,
+        badgeText: "↑ 0.2v",
+        subtext: "Max generation efficiency reached. Battery charging normal.",
+        lastUpdated: provider.lastMqttTime,
+        rawValue: provider.v,
+        optimalMin: 2.0,
+        optimalMax: 6.0,
+      ),
+      MetricCard(
+        title: "Ambient Temp",
+        value: provider.temp.toStringAsFixed(0),
+        unit: "\u00B0C",
+        icon: Icons.thermostat,
+        themeColor: const Color(0xFFF43F5E),
+        progress: provider.temp / 50.0,
+        badgeText: "↑ 1.5°",
+        subtext: "Temp slightly high. Ensure shade netting is deployed.",
+        lastUpdated: provider.lastMqttTime,
+        rawValue: provider.temp,
+        optimalMin: 18,
+        optimalMax: 28,
+      ),
+      MetricCard(
+        title: "Air Humidity",
+        value: provider.humidity.toStringAsFixed(0),
+        unit: "%",
+        icon: Icons.opacity,
+        themeColor: const Color(0xFF10B981),
+        progress: provider.humidity / 100.0,
+        badgeText: "↑ 3%",
+        subtext: "Ambient relative humidity within safe agricultural bands.",
+        lastUpdated: provider.lastMqttTime,
+        rawValue: provider.humidity,
+        optimalMin: 40,
+        optimalMax: 80,
+      ),
+    ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
         int crossAxisCount = 4;
@@ -1127,74 +1454,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         } else if (constraints.maxWidth < 1000) {
           crossAxisCount = 2;
         }
-        
-        final cardHeight = crossAxisCount == 4 ? 220.0 : (crossAxisCount == 2 ? 200.0 : 180.0);
-        
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: (constraints.maxWidth / crossAxisCount) / cardHeight,
-          children: [
-            MetricCard(
-              title: "Avg Soil Moisture",
-              value: provider.soil.toStringAsFixed(0),
-              unit: "%",
-              icon: Icons.water_drop,
-              themeColor: const Color(0xFF3B82F6),
-              progress: provider.soil / 100,
-              badgeText: "↑ 12%",
-              subtext: "Keep monitoring to ensure it remains consistent above 40%.",
-              lastUpdated: provider.lastMqttTime,
-              rawValue: provider.soil,
-              optimalMin: 40,
-              optimalMax: 70,
-            ),
-            MetricCard(
-              title: "Solar Panel Output",
-              value: provider.v.toStringAsFixed(1),
-              unit: "V",
-              icon: Icons.solar_power,
-              themeColor: Colors.amber[500]!,
-              progress: provider.v / 6.0,
-              badgeText: "↑ 0.2v",
-              subtext: "Max generation efficiency reached. Battery charging normal.",
-              lastUpdated: provider.lastMqttTime,
-              rawValue: provider.v,
-              optimalMin: 2.0,
-              optimalMax: 6.0,
-            ),
-            MetricCard(
-              title: "Ambient Temp",
-              value: provider.temp.toStringAsFixed(0),
-              unit: "\u00B0C",
-              icon: Icons.thermostat,
-              themeColor: const Color(0xFFF43F5E),
-              progress: provider.temp / 50.0,
-              badgeText: "↑ 1.5\u00B0",
-              subtext: "Temp slightly high. Ensure shade netting is deployed.",
-              lastUpdated: provider.lastMqttTime,
-              rawValue: provider.temp,
-              optimalMin: 18,
-              optimalMax: 28,
-            ),
-            MetricCard(
-              title: "Air Humidity",
-              value: provider.humidity.toStringAsFixed(0),
-              unit: "%",
-              icon: Icons.opacity,
-              themeColor: const Color(0xFF10B981),
-              progress: provider.humidity / 100.0,
-              badgeText: "↑ 3%",
-              subtext: "Ambient relative humidity within safe agricultural bands.",
-              lastUpdated: provider.lastMqttTime,
-              rawValue: provider.humidity,
-              optimalMin: 40,
-              optimalMax: 80,
-            ),
-          ],
+        final childWidth = (constraints.maxWidth - (crossAxisCount - 1) * 16) / crossAxisCount;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: cards.map((card) => SizedBox(width: childWidth, child: card)).toList(),
         );
       },
     );
@@ -1262,12 +1526,25 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   )
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              // Metric toggle buttons
+              Row(
+                children: [
+                  _buildMetricToggle('moisture', '\u{1F4A7} Moisture'),
+                  const SizedBox(width: 6),
+                  _buildMetricToggle('temperature', '\u{1F321}\uFE0F Temp'),
+                  const SizedBox(width: 6),
+                  _buildMetricToggle('humidity', '\u{1F4A8} Humidity'),
+                  const SizedBox(width: 6),
+                  _buildMetricToggle('light', '\u{2600}\uFE0F Light'),
+                ],
+              ),
+              const SizedBox(height: 16),
               // Render fl_chart widget
               LayoutBuilder(
                 builder: (context, constraints) => SizedBox(
                   height: constraints.maxWidth < 600 ? 220 : 280,
-                  child: TelemetryChart(history: provider.history),
+                  child: TelemetryChart(history: provider.history, activeMetric: _activeChartMetric),
                 ),
               ),
             ],
@@ -1557,7 +1834,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(sub, style: TextStyle(color: isAlert ? Colors.red[300] : Colors.grey[500], fontSize: 9)),
+                Text(sub, softWrap: true, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: isAlert ? Colors.red[300] : Colors.grey[500], fontSize: 9)),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1858,419 +2135,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // AI FEATURE 3 — GEMINI CHAT FAB + PANEL
+  // AI CHAT — Opens as Modal Bottom Sheet
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildAIChatFAB(TelemetryProvider provider) {
-    final isDesktop = MediaQuery.of(context).size.width > 1024;
-    if (isDesktop) {
-      return FloatingActionButton.extended(
-        onPressed: () => setState(() => _isChatOpen = !_isChatOpen),
-        backgroundColor: const Color(0xFF00979D),
-        icon: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _isChatOpen
-              ? const Icon(Icons.close, key: ValueKey('close'), color: Colors.white)
-              : const Icon(Icons.auto_awesome, key: ValueKey('open'), color: Colors.white),
-        ),
-        label: Text(
-          _isChatOpen ? 'Close' : 'Ask RootWise',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-      );
-    }
-    return FloatingActionButton(
-      onPressed: () => setState(() => _isChatOpen = !_isChatOpen),
-      backgroundColor: const Color(0xFF00979D),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _isChatOpen
-            ? const Icon(Icons.close, key: ValueKey('close'), color: Colors.white, size: 22)
-            : const Icon(Icons.auto_awesome, key: ValueKey('open'), color: Colors.white, size: 22),
-      ),
-    );
-  }
-
-  Widget _buildAIChatPanel(TelemetryProvider provider, bool isDesktop) {
-    final size = MediaQuery.of(context).size;
-    final double panelWidth = isDesktop ? 380 : (size.width < 480 ? size.width - 16 : size.width - 32);
-    final double panelHeight = isDesktop ? 520 : (size.height < 700 ? size.height * 0.55 : 440);
-    return Positioned(
-      right: isDesktop ? 16 : 8,
-      bottom: isDesktop ? 16 : 8,
-      width: panelWidth.clamp(280.0, 480.0),
-      height: panelHeight.clamp(300.0, 600.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.92),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.7)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF00979D).withOpacity(0.15),
-                  blurRadius: 40,
-                  offset: const Offset(0, 10),
-                )
-              ],
-            ),
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [const Color(0xFF00979D), const Color(0xFF02C39A)],
-                    ),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('RootWise Assistant',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                            Text('Live sensor context · RootWise AI',
-                                style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 9)),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: provider.clearChat,
-                        child: Icon(Icons.refresh, color: Colors.white.withOpacity(0.78), size: 16),
-                      ),
-                      const SizedBox(width: 14),
-                      GestureDetector(
-                        onTap: () => setState(() => _isChatOpen = false),
-                        child: const Icon(Icons.close, color: Colors.white, size: 18),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Messages list
-                Expanded(
-                  child: provider.chatMessages.isEmpty
-                      ? _buildChatEmptyState(provider)
-                      : ListView.builder(
-                          controller: _chatScrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: provider.chatMessages.length + (provider.isAiTyping ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (provider.isAiTyping && index == provider.chatMessages.length) {
-                              return _buildTypingBubble();
-                            }
-                            final msg = provider.chatMessages[index];
-                            return _buildChatBubble(msg);
-                          },
-                        ),
-                ),
-
-                // Input bar
-                Container(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -2)),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _chatInputController,
-                          enabled: !provider.isAiTyping,
-                          decoration: InputDecoration(
-                            hintText: 'Ask about your crops…',
-                            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: const Color(0xFF00979D)),
-                            ),
-                            contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                          maxLines: 1,
-                          minLines: 1,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (text) {
-                            if (text.trim().isNotEmpty) {
-                              _sendChatMessage(provider);
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: provider.isAiTyping ? null : _startSpeechToText,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: _isListening ? Colors.red.withOpacity(0.1) : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            _isListening ? Icons.mic : Icons.mic_none,
-                            color: _isListening ? Colors.redAccent : Colors.grey[500],
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: provider.isAiTyping ? null : () => _sendChatMessage(provider),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            gradient: provider.isAiTyping
-                                ? null
-                                : const LinearGradient(colors: [const Color(0xFF00979D), const Color(0xFF02C39A)]),
-                            color: provider.isAiTyping ? Colors.grey[300] : null,
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(color: const Color(0xFF00979D).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
-                            ],
-                          ),
-                          child: provider.isAiTyping
-                              ? const Padding(
-                                  padding: EdgeInsets.all(10),
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _sendChatMessage(TelemetryProvider provider) {
-    final text = _chatInputController.text.trim();
-    if (text.isEmpty || provider.isAiTyping) return;
-    _chatInputController.clear();
-    provider.askAI(text).then((_) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (_chatScrollController.hasClients) {
-          _chatScrollController.animateTo(
-            _chatScrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    });
-  }
-
-  void _startSpeechToText() async {
-    try {
-      final supported = js.context.callMethod('eval', ['''
-        !!(window.SpeechRecognition || window.webkitSpeechRecognition)
-      ''']);
-      if (supported != true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Speech not supported in this browser"), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
-          );
-        }
-        return;
-      }
-      setState(() => _isListening = true);
-      js.context.callMethod('eval', ['''
-        (function() {
-          var sr = window.SpeechRecognition || window.webkitSpeechRecognition;
-          var r = new sr();
-          r.lang = 'en-US';
-          r.interimResults = false;
-          r.continuous = false;
-          r.onresult = function(e) {
-            window._srResult = e.results[e.results.length - 1][0].transcript;
-          };
-          r.onerror = function() { window._srResult = ''; };
-          r.onend = function() { window._srDone = true; };
-          r.start();
-        })()
-      ''']);
-      while (true) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        if (js.context['_srDone'] == true) {
-          final transcript = js.context['_srResult'] as String? ?? '';
-          js.context.callMethod('eval', ['delete window._srResult; delete window._srDone;']);
-          if (transcript.isNotEmpty) {
-            _chatInputController.text = transcript;
-          }
-          break;
-        }
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _isListening = false);
-  }
-
-  Widget _buildChatEmptyState(TelemetryProvider provider) {
-    final suggestions = [
-      'Is my ${_gardenName.split(' ').first} stressed?',
-      'Should I irrigate now?',
-      'What does ${provider.soil.toStringAsFixed(0)}% soil moisture mean?',
-      'Why is my temp at ${provider.temp.toStringAsFixed(0)}°C?',
-    ];
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: Lottie.asset('assets/plant_loader.json'),
-          ),
-          const SizedBox(height: 4),
-          const Text('Ask anything about your crop',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B))),
-          const SizedBox(height: 4),
-          Text('I have live access to your sensor data',
-              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
-            children: suggestions.map((s) => GestureDetector(
-              onTap: () {
-                _chatInputController.text = s;
-                _sendChatMessage(provider);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00979D).withOpacity(0.07),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF00979D).withOpacity(0.2)),
-                ),
-                child: Text(s, style: const TextStyle(fontSize: 10, color: const Color(0xFF00979D), fontWeight: FontWeight.w600)),
-              ),
-            )).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatBubble(ChatMessage msg) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        mainAxisAlignment: msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!msg.isUser) ...[
-            Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [const Color(0xFF00979D), const Color(0xFF02C39A)]),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12),
-            ),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: msg.isUser ? const Color(0xFF00979D) : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(msg.isUser ? 16 : 4),
-                  bottomRight: Radius.circular(msg.isUser ? 4 : 16),
-                ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))
-                ],
-              ),
-              child: Text(
-                msg.text,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: msg.isUser ? Colors.white : const Color(0xFF1E293B),
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ),
-          if (msg.isUser) const SizedBox(width: 6),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingBubble() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 26, height: 26,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [const Color(0xFF00979D), const Color(0xFF02C39A)]),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) => AnimatedContainer(
-                duration: Duration(milliseconds: 400 + i * 150),
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                width: 5, height: 5,
-                decoration: const BoxDecoration(
-                  color: const Color(0xFF00979D),
-                  shape: BoxShape.circle,
-                ),
-              )),
-            ),
-          ),
-        ],
+  void _openAIChat(TelemetryProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RootWiseAssistantSheet(
+        gardenName: _gardenName,
       ),
     );
   }
@@ -2359,6 +2233,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
         // Active Garden Monitoring Zone Panel
         _buildGardenInfoPanel(provider),
+
+        const SizedBox(height: 12),
+
+        // Data source indicator + timestamp
+        _buildDataStatusBar(provider),
 
         const SizedBox(height: 24),
 
@@ -2894,10 +2773,17 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w500)),
-          Text(value, style: const TextStyle(color: Color(0xFF1E293B), fontSize: 11, fontWeight: FontWeight.bold)),
+          Expanded(
+            flex: 2,
+            child: Text(label, softWrap: true, style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w500)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: Text(value, softWrap: true, textAlign: TextAlign.end, style: const TextStyle(color: Color(0xFF1E293B), fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
@@ -3764,9 +3650,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   "Reset",
                   style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)
                 ),
-              )
-          ],
-        ),
+                )
+              ],
+            ),
         const SizedBox(height: 24),
 
         // Table Panel Card
@@ -4292,33 +4178,109 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.lock_outlined, color: Color(0xFF00979D), size: 20),
+                        const Icon(Icons.person_outlined, color: Color(0xFF00979D), size: 20),
                         const SizedBox(width: 10),
-                        const Text("Change Password",
+                        const Text("Account",
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    if (!_passwordChangeEnabled)
-                      Column(
+                    _buildSettingRow("Username", provider.loggedInUsername.isNotEmpty ? provider.loggedInUsername : "username", Icons.person_outlined),
+                    const SizedBox(height: 12),
+                    if (!_usernameChangeEnabled)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => setState(() => _usernameChangeEnabled = true),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text("Change Username", style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF00979D),
+                            side: const BorderSide(color: Color(0xFF00979D)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                    if (_usernameChangeEnabled) ...[
+                      _buildPasswordField("New Username", _newUsernameController, false, (_) {}),
+                      const SizedBox(height: 12),
+                      _buildPasswordField("Enter Password", _usernamePasswordController, _usernamePasswordVisible, (v) => setState(() => _usernamePasswordVisible = v)),
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
-                          _buildSettingRow("Username", provider.loggedInUsername.isNotEmpty ? provider.loggedInUsername : "username", Icons.person_outlined),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => setState(() => _passwordChangeEnabled = true),
-                              icon: const Icon(Icons.lock_reset_outlined, size: 16),
-                              label: const Text("Change Password", style: TextStyle(fontSize: 12)),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                _newUsernameController.clear();
+                                _usernamePasswordController.clear();
+                                setState(() { _usernameChangeEnabled = false; _usernameStatus = null; });
+                              },
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF00979D),
-                                side: const BorderSide(color: Color(0xFF00979D)),
+                                foregroundColor: Colors.grey[600],
+                                side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              child: const Text("Cancel", style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _usernameSaving ? null : () => _changeUsername(provider),
+                              icon: _usernameSaving
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.check_circle_outline, size: 16),
+                              label: Text(_usernameSaving ? "Saving..." : "Save", style: const TextStyle(fontSize: 12, color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00979D),
+                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                               ),
                             ),
                           ),
                         ],
+                      ),
+                      if (_usernameStatus != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _usernameStatus!.startsWith('✓') ? Icons.check_circle_outlined : Icons.error_outline,
+                                size: 14,
+                                color: _usernameStatus!.startsWith('✓') ? const Color(0xFF10B981) : Colors.redAccent,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _usernameStatus!.replaceFirst('✓ ', '').replaceFirst('✗ ', ''),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: _usernameStatus!.startsWith('✓') ? const Color(0xFF10B981) : Colors.redAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    const Divider(color: Colors.black12, height: 24),
+                    if (!_passwordChangeEnabled)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => setState(() => _passwordChangeEnabled = true),
+                          icon: const Icon(Icons.lock_reset_outlined, size: 16),
+                          label: const Text("Change Password", style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF00979D),
+                            side: const BorderSide(color: Color(0xFF00979D)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
                       ),
                     if (_passwordChangeEnabled) ...[
                       _buildPasswordField("Current Password", _oldPasswordController, _oldPasswordVisible, (v) => setState(() => _oldPasswordVisible = v)),
@@ -4508,11 +4470,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   String _formatTime(DateTime dt) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     final diff = DateTime.now().difference(dt);
     if (diff.inSeconds < 5) return 'just now';
     if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }
 
   IconData _providerIcon(String provider) {

@@ -266,6 +266,9 @@ class TelemetryProvider extends ChangeNotifier {
 
   WebSocketChannel? _wsChannel;
   Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxRetries = 5;
+  static const Duration _retryInterval = Duration(seconds: 5);
 
   // Getters — Telemetry
   double get temp => _temp;
@@ -353,6 +356,7 @@ class TelemetryProvider extends ChangeNotifier {
       _wsChannel!.stream.listen(
         (message) {
           _isConnected = true;
+          _resetReconnectCounter();
           _handleWsMessage(message);
         },
         onError: (error) {
@@ -447,10 +451,19 @@ class TelemetryProvider extends ChangeNotifier {
     _wsChannel = null;
 
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
-      addTerminalLog("Attempting connection to Node.js backend...");
-      _connectWebSocket();
-    });
+    if (_reconnectAttempts < _maxRetries) {
+      _reconnectAttempts++;
+      addTerminalLog("Reconnect attempt $_reconnectAttempts/$_maxRetries in 5s...");
+      _reconnectTimer = Timer(_retryInterval, () {
+        _connectWebSocket();
+      });
+    } else {
+      addTerminalLog("Max reconnect attempts ($_maxRetries) reached. Manual refresh required.");
+    }
+  }
+
+  void _resetReconnectCounter() {
+    _reconnectAttempts = 0;
   }
 
   // ── AI ACTIONS ─────────────────────────────────────────────────────────────

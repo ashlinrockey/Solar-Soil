@@ -319,6 +319,7 @@
 
             const username = emailInput.value.trim();
             const password = passwordInput.value;
+            const rememberMe = document.getElementById('remember-me').checked;
 
             if (!username) { showError('Please enter your email or username.'); return; }
             if (!password) { showError('Please enter your password.'); return; }
@@ -335,7 +336,12 @@
                 const data = await res.json();
                 if (data.success) {
                     const uname = (data.user?.username) || username;
-                    sessionStorage.setItem('solarsoil_username', uname);
+                    const sessionData = { username: uname, timestamp: Date.now() };
+                    if (rememberMe) {
+                        localStorage.setItem('solarsoil_session', JSON.stringify(sessionData));
+                    } else {
+                        sessionStorage.setItem('solarsoil_session', JSON.stringify(sessionData));
+                    }
                     window.location.href = '/dashboard?username=' + encodeURIComponent(uname);
                 } else {
                     showError(data.message || 'Invalid username or password.');
@@ -353,6 +359,19 @@
             e.preventDefault();
             handleLogin();
         });
+
+        // Auto-restore session on page load
+        (function restoreSession() {
+            const stored = localStorage.getItem('solarsoil_session') || sessionStorage.getItem('solarsoil_session');
+            if (stored) {
+                try {
+                    const session = JSON.parse(stored);
+                    if (session && session.username) {
+                        window.location.href = '/dashboard?username=' + encodeURIComponent(session.username);
+                    }
+                } catch (_) {}
+            }
+        })();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') hideError();

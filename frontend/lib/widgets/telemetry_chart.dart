@@ -4,8 +4,9 @@ import '../providers/telemetry_provider.dart';
 
 class TelemetryChart extends StatelessWidget {
   final List<TelemetryReading> history;
+  final String activeMetric;
 
-  const TelemetryChart({super.key, required this.history});
+  const TelemetryChart({super.key, required this.history, this.activeMetric = 'moisture'});
 
   @override
   Widget build(BuildContext context) {
@@ -25,17 +26,24 @@ class TelemetryChart extends StatelessWidget {
       );
     }
 
-    // Limit display to the last 7 readings (similar to the HTML chart's 7 tick marks)
-    final displayHistory = history.length > 7 
-        ? history.sublist(history.length - 7) 
+    final displayHistory = history.length > 7
+        ? history.sublist(history.length - 7)
         : history;
 
-    // Convert list to spots
-    List<FlSpot> soilSpots = [];
-    List<FlSpot> solarSpots = [];
-    for (int i = 0; i < displayHistory.length; i++) {
-      soilSpots.add(FlSpot(i.toDouble(), displayHistory[i].soil));
-      solarSpots.add(FlSpot(i.toDouble(), displayHistory[i].v));
+    ({Color color, String label, String suffix, List<FlSpot> spots, double maxY}) metric;
+    switch (activeMetric) {
+      case 'temperature':
+        final spots = displayHistory.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.temp)).toList();
+        metric = (color: const Color(0xFFF43F5E), label: 'Temp', suffix: '\u00B0C', spots: spots, maxY: 60);
+      case 'humidity':
+        final spots = displayHistory.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.humidity)).toList();
+        metric = (color: const Color(0xFF10B981), label: 'Humidity', suffix: '%', spots: spots, maxY: 100);
+      case 'light':
+        final spots = displayHistory.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.v)).toList();
+        metric = (color: const Color(0xFFF59E0B), label: 'Solar', suffix: ' V', spots: spots, maxY: 6);
+      default:
+        final spots = displayHistory.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.soil)).toList();
+        metric = (color: const Color(0xFF3B82F6), label: 'Moisture', suffix: '%', spots: spots, maxY: 100);
     }
 
     return LineChart(
@@ -43,44 +51,24 @@ class TelemetryChart extends StatelessWidget {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: true,
-          horizontalInterval: 20,
+          horizontalInterval: metric.maxY / 5,
           verticalInterval: 1,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.black.withOpacity(0.03),
-              strokeWidth: 1,
-            );
-          },
-          getDrawingVerticalLine: (value) {
-            return FlLine(
-              color: Colors.black.withOpacity(0.03),
-              strokeWidth: 1,
-            );
-          },
+          getDrawingHorizontalLine: (value) => FlLine(color: Colors.black.withOpacity(0.03), strokeWidth: 1),
+          getDrawingVerticalLine: (value) => FlLine(color: Colors.black.withOpacity(0.03), strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: 20,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  value.toInt().toString(),
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontWeight: FontWeight.w500,
-                    fontSize: 10,
-                  ),
-                );
-              },
-              reservedSize: 28,
+              interval: metric.maxY / 5,
+              reservedSize: 32,
+              getTitlesWidget: (value, meta) => Text(
+                value.toStringAsFixed(0),
+                style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w500, fontSize: 10),
+              ),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -91,18 +79,13 @@ class TelemetryChart extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 final int idx = value.toInt();
                 if (idx >= 0 && idx < displayHistory.length) {
-                  final time = displayHistory[idx].time;
-                  final timeStr = "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+                  final t = displayHistory[idx].time;
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
-                    space: 8.0,
+                    space: 8,
                     child: Text(
-                      timeStr,
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.w500,
-                        fontSize: 10,
-                      ),
+                      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w500, fontSize: 10),
                     ),
                   );
                 }
@@ -111,42 +94,28 @@ class TelemetryChart extends StatelessWidget {
             ),
           ),
         ),
-        borderData: FlBorderData(
-          show: false,
-        ),
+        borderData: FlBorderData(show: false),
         minX: 0,
         maxX: (displayHistory.length - 1).toDouble(),
         minY: 0,
-        maxY: 100, // percentage and voltage normalized safely
+        maxY: metric.maxY,
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             tooltipBgColor: Colors.white.withOpacity(0.95),
             tooltipBorder: BorderSide(color: Colors.black.withOpacity(0.05)),
             tooltipRoundedRadius: 12,
             tooltipPadding: const EdgeInsets.all(12),
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((LineBarSpot touchedSpot) {
-                final isSoil = touchedSpot.barIndex == 0;
-                final suffix = isSoil ? '%' : ' V';
-                final label = isSoil ? 'Moisture' : 'Solar';
-                return LineTooltipItem(
-                  '$label: ${touchedSpot.y.toStringAsFixed(1)}$suffix',
-                  TextStyle(
-                    color: isSoil ? const Color(0xFF3B82F6) : const Color(0xFF00979D),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                );
-              }).toList();
-            },
+            getTooltipItems: (touchedSpots) => touchedSpots.map((spot) => LineTooltipItem(
+              '${metric.label}: ${spot.y.toStringAsFixed(1)}${metric.suffix}',
+              TextStyle(color: metric.color, fontWeight: FontWeight.bold, fontSize: 11),
+            )).toList(),
           ),
         ),
         lineBarsData: [
-          // 1. Soil Moisture Line
           LineChartBarData(
-            spots: soilSpots,
+            spots: metric.spots,
             isCurved: true,
-            color: const Color(0xFF3B82F6),
+            color: metric.color,
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(
@@ -155,49 +124,13 @@ class TelemetryChart extends StatelessWidget {
                 radius: 4,
                 color: Colors.white,
                 strokeWidth: 2,
-                strokeColor: const Color(0xFF3B82F6),
+                strokeColor: metric.color,
               ),
             ),
             belowBarData: BarAreaData(
               show: true,
               gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF3B82F6).withOpacity(0.4),
-                  const Color(0xFF3B82F6).withOpacity(0.0),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          
-          // 2. Solar Output Line
-          LineChartBarData(
-            spots: solarSpots.map((spot) {
-              // Scale voltage 0-6V up to 0-100 grid for dual axis overlay
-              final scaledY = (spot.y / 6.0) * 100.0;
-              return FlSpot(spot.x, scaledY.clamp(0.0, 100.0));
-            }).toList(),
-            isCurved: true,
-            color: const Color(0xFF00979D),
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 4,
-                color: Colors.white,
-                strokeWidth: 2,
-                strokeColor: const Color(0xFF00979D),
-              ),
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF00979D).withOpacity(0.4),
-                  const Color(0xFF00979D).withOpacity(0.0),
-                ],
+                colors: [metric.color.withOpacity(0.4), metric.color.withOpacity(0.0)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

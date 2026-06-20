@@ -655,13 +655,19 @@ mqttClient.on('message', (topic, message) => {
 
     const parsedData = JSON.parse(rawPayload);
     
+    // Sanitize: guard against NaN / Infinity from malformed sensor reads
+    const safeNum = (v, fallback) => {
+      const n = v !== undefined ? parseFloat(v) : fallback;
+      return (n !== null && !isNaN(n) && isFinite(n)) ? n : (fallback ?? 0);
+    };
+
     // Structure telemetry model
     const reading = {
-      temp: parsedData.temp !== undefined ? parseFloat(parsedData.temp) : lastReading.temp,
-      soil: parsedData.soil !== undefined ? parseFloat(parsedData.soil) : lastReading.soil,
-      v: parsedData.v !== undefined ? parseFloat(parsedData.v) : lastReading.v,
-      humidity: parsedData.humidity !== undefined ? parseFloat(parsedData.humidity) : lastReading.humidity,
-      current: parsedData.current !== undefined ? parseFloat(parsedData.current) : lastReading.current,
+      temp: safeNum(parsedData.temp, lastReading.temp),
+      soil: safeNum(parsedData.soil, lastReading.soil),
+      v: safeNum(parsedData.v, lastReading.v),
+      humidity: safeNum(parsedData.humidity, lastReading.humidity),
+      current: safeNum(parsedData.current, lastReading.current),
       timestamp: new Date().toISOString()
     };
 

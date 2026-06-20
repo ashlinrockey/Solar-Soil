@@ -34,11 +34,16 @@ spec:
     # ----------------------------------------------------------
     - name: solarsoil-app
       image: localhost/solarsoil-app:latest
+      volumeMounts:
+        - mountPath: /app/data
+          name: app-data
       env:
         - name: NODE_ENV
           value: "production"
         - name: PORT
           value: "5000"
+        - name: DATA_DIR
+          value: "/app/data"
         - name: INFLUX_URL
           value: "http://localhost:8086"
         - name: INFLUX_TOKEN
@@ -65,4 +70,8 @@ spec:
     - name: influxdb-config
       hostPath:
         path: /etc/solarsoil/influxdb-config
+        type: DirectoryOrCreate
+    - name: app-data
+      hostPath:
+        path: /home/sysadmin/solar/data
         type: DirectoryOrCreate

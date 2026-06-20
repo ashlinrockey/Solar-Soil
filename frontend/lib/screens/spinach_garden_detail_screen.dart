@@ -677,7 +677,9 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
           flex: 4,
           child: Column(
             children: [
-              _buildPlant3DViewer(soil, temp, humidity, light),
+              Expanded(
+                child: _buildPlant3DViewer(soil, temp, humidity, light),
+              ),
               const SizedBox(height: 8),
               _buildAiDiagnosticPanel(provider, soil, temp, humidity, light),
               const SizedBox(height: 12),
@@ -725,7 +727,10 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
     return Column(
       children: [
         // 3D Plant Model occupies top slot
-        _buildPlant3DViewer(soil, temp, humidity, light),
+        SizedBox(
+          height: 350,
+          child: _buildPlant3DViewer(soil, temp, humidity, light),
+        ),
         const SizedBox(height: 8),
         _buildAiDiagnosticPanel(provider, soil, temp, humidity, light),
         const SizedBox(height: 12),
@@ -801,8 +806,7 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
   Widget _buildPlant3DViewer(double soil, double temp, double humidity, double light) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const double viewportHeight = 480.0;
-        final size = Size(constraints.maxWidth, viewportHeight);
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
         return GestureDetector(
           onTapUp: (details) => _handleTap(details, size),
           onPanDown: (d) {
@@ -832,7 +836,6 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
                 padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0),
                 borderRadius: 30,
                 child: Container(
-                  height: viewportHeight,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
