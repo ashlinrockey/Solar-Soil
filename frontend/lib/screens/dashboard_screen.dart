@@ -1094,7 +1094,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           ),
         );
       },
-      behavior: HitTestBehavior.translucent,
       borderRadius: BorderRadius.circular(16),
       child: GlassCard(
         child: LayoutBuilder(
