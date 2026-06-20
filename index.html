@@ -9,6 +9,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <meta name="csrf-token" content="">
     <style>
         @keyframes float {
             0%, 100% { transform: translateY(0); }
@@ -301,6 +302,12 @@
             loginBtnText.classList.toggle('hidden', loading);
             loginSpinner.classList.toggle('hidden', !loading);
         }
+        function getCsrfToken() {
+            const match = document.cookie.match(/(?:^| )csrf_token=([^;]+)/);
+            const token = match ? decodeURIComponent(match[1]) : '';
+            document.querySelector('meta[name="csrf-token"]').setAttribute('content', token);
+            return token;
+        }
 
         let loginInProgress = false;
 
@@ -330,7 +337,7 @@
             try {
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
                     body: JSON.stringify({ username, password }),
                 });
                 const data = await res.json();

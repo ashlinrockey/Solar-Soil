@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { createServer as createHttpsServer } from 'https';
 import fs from 'fs';
+import crypto from 'crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import mqtt from 'mqtt';
 import cors from 'cors';
@@ -63,6 +64,55 @@ if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslC
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// ── CSRF Protection ────────────────────────────────────────────────────────────
+const csrfSecret = crypto.randomBytes(32).toString('hex');
+
+function csrfToken() {
+  const ts = Date.now().toString(36);
+  const hash = crypto.createHmac('sha256', csrfSecret).update(ts).digest('hex').slice(0, 16);
+  return `${ts}.${hash}`;
+}
+
+function validateCsrf(token) {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [ts, hash] = parts;
+  const expected = crypto.createHmac('sha256', csrfSecret).update(ts).digest('hex').slice(0, 16);
+  // Accept tokens up to 24 hours old
+  if (Math.abs(parseInt(ts, 36) - Date.now()) > 86400000) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(hash));
+}
+
+// Set CSRF cookie on every response
+app.use((req, res, next) => {
+  const existing = req.headers['x-csrf-token'] || '';
+  if (!existing || !validateCsrf(existing)) {
+    const token = csrfToken();
+    res.setHeader('Set-Cookie', `csrf_token=${token}; Path=/; SameSite=Strict; Max-Age=86400`);
+  }
+  next();
+});
+
+// Validate CSRF on state-changing requests (skip login since it generates the initial CSRF)
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  if (req.path === '/api/auth/login') return next();
+  
+  const headerToken = req.headers['x-csrf-token'];
+  if (!validateCsrf(headerToken)) {
+    return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token.' });
+  }
+  next();
+});
+
+// Expose CSRF token to clients via a simple endpoint
+app.get('/api/csrf-token', (req, res) => {
+  const token = csrfToken();
+  res.setHeader('Set-Cookie', `csrf_token=${token}; Path=/; SameSite=Strict; Max-Age=86400`);
+  res.json({ token });
+});
 
 // Serve root-level static assets (tailwind-built.css, style.css, index.html)
 app.use(express.static(path.join(__dirname, '..'), {

@@ -1,9 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:js' as js;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+String _csrfToken() {
+  if (!kIsWeb) return '';
+  try {
+    final doc = js.context['document'];
+    if (doc == null) return '';
+    final cookie = doc['cookie'] as String? ?? '';
+    final match = RegExp(r'(?:^| )csrf_token=([^;]+)').firstMatch(cookie);
+    return match?.group(1) ?? '';
+  } catch (_) {
+    return '';
+  }
+}
+
+Map<String, String> _csrfHeaders() => {'X-CSRF-Token': _csrfToken()};
 
 class TelemetryReading {
   final double temp;
@@ -480,7 +496,7 @@ class TelemetryProvider extends ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$_baseHttpUrl/api/ai/ask'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', ..._csrfHeaders()},
         body: json.encode({'question': question.trim()}),
       ).timeout(const Duration(seconds: 30));
 
@@ -555,7 +571,7 @@ class TelemetryProvider extends ChangeNotifier {
 
       final response = await http.post(
         Uri.parse('$_baseHttpUrl/api/ai/scan-image'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', ..._csrfHeaders()},
         body: json.encode({
           'image': base64String,
           'mimeType': mimeType,
@@ -598,7 +614,7 @@ class TelemetryProvider extends ChangeNotifier {
     try {
       final res = await http.post(
         Uri.parse('$_baseHttpUrl/api/ai/config'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', ..._csrfHeaders()},
         body: json.encode(config),
       );
       return res.statusCode == 200;
@@ -609,7 +625,7 @@ class TelemetryProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>> testAIConnection() async {
     try {
-      final res = await http.post(Uri.parse('$_baseHttpUrl/api/ai/test'));
+      final res = await http.post(Uri.parse('$_baseHttpUrl/api/ai/test'), headers: _csrfHeaders());
       if (res.statusCode == 200) return json.decode(res.body);
       return {'ok': false, 'message': 'Connection failed'};
     } catch (e) {
@@ -631,7 +647,7 @@ class TelemetryProvider extends ChangeNotifier {
     try {
       final res = await http.post(
         Uri.parse('$_baseHttpUrl/api/garden/config'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', ..._csrfHeaders()},
         body: json.encode(config),
       );
       return res.statusCode == 200;
@@ -661,7 +677,7 @@ class TelemetryProvider extends ChangeNotifier {
     try {
       final res = await http.post(
         Uri.parse('$_baseHttpUrl/api/auth/change-password'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', ..._csrfHeaders()},
         body: json.encode({
           'username': loggedInUsername,
           'oldPassword': oldPassword,
@@ -678,7 +694,7 @@ class TelemetryProvider extends ChangeNotifier {
     try {
       final res = await http.post(
         Uri.parse('$_baseHttpUrl/api/auth/change-username'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', ..._csrfHeaders()},
         body: json.encode({
           'currentUsername': loggedInUsername,
           'newUsername': newUsername,
