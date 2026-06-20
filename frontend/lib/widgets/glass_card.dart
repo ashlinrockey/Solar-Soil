@@ -52,44 +52,41 @@ class _GlassCardState extends State<GlassCard> with SingleTickerProviderStateMix
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(widget.borderRadius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
-              child: Container(
-                padding: widget.padding,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(widget.borderRadius),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: widget.borderOpacity),
-                    width: 1.0,
-                  ),
+            child: Container(
+              padding: widget.padding,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: widget.borderOpacity),
+                  width: 1.0,
                 ),
-                foregroundDecoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(widget.borderRadius),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF00979D).withValues(alpha: 0.06 + 0.04 * (_ctrl.value / 1000)),
-                      Colors.transparent,
-                      const Color(0xFF02C39A).withValues(alpha: 0.06 + 0.04 * ((1000 - _ctrl.value) / 1000)),
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ),
+              ),
+              foregroundDecoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF00979D).withValues(alpha: 0.06 + 0.04 * (_ctrl.value / 1000)),
+                    Colors.transparent,
+                    const Color(0xFF02C39A).withValues(alpha: 0.06 + 0.04 * ((1000 - _ctrl.value) / 1000)),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
                 ),
-                child: Stack(
-                  children: [
-                    child!,
-                    // Scan lines overlay
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: CustomPaint(
-                          painter: _ScanLinePainter(scrollOffset: _ctrl.value),
-                        ),
+              ),
+              child: Stack(
+                children: [
+                  child!,
+                  // Scan lines overlay
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _ScanLinePainter(scrollOffset: _ctrl.value),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
