@@ -33,6 +33,9 @@ dependencies:
   # Lottie animations
   lottie: ^3.3.3
 
+  # Cupertino Icons (required by Material widgets as fallback)
+  cupertino_icons: ^1.0.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -44,3 +47,15 @@ flutter:
     - assets/
     - assets/plant_loader.json
     - assets/loader.json
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-Light.ttf
+          weight: 300

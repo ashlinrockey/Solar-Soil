@@ -36,6 +36,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   String _zoneId = "PL-02J";
   String _coverageArea = "200 m²";
   bool _gardenConfigLoaded = false;
+  bool _editClicked = false; // tracks if edit button was just tapped
 
   // Notifications
   final List<Map<String, String>> _notifications = [
@@ -1075,26 +1076,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         });
       });
     }
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => SpinachGardenDetailScreen(gardenName: _gardenName),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(1.0, 0.0);
-              const end = Offset.zero;
-              const curve = Curves.easeInOutCubic;
-              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-              return SlideTransition(
-                position: animation.drive(tween),
-                child: FadeTransition(opacity: animation, child: child),
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 600),
-          ),
-        );
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) {
+        provider.addTerminalLog("GARDEN CARD: pointerDown fired");
       },
-      borderRadius: BorderRadius.circular(16),
+      onPointerUp: (_) {
+        if (_editClicked) { _editClicked = false; provider.addTerminalLog("GARDEN CARD: Edit clicked, skipping nav"); return; }
+        provider.addTerminalLog("GARDEN CARD: Navigation triggered via MaterialPageRoute");
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => SpinachGardenDetailScreen(gardenName: _gardenName),
+          settings: const RouteSettings(name: '/garden/spinach'),
+        ));
+      },
       child: GlassCard(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1139,6 +1133,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         ),
                       ),
                       GestureDetector(
+                        onTapDown: (_) { _editClicked = true; },
                         onTap: () => _showGardenEditDialog(provider),
                         child: Container(
                           width: 32,
@@ -1640,7 +1635,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ],
               );
             }
-            
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/telemetry_provider.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/spinach_garden_detail_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,25 +25,22 @@ class SolarSoilApp extends StatelessWidget {
       title: 'Solar Soil IoT Dashboard',
       debugShowCheckedModeBanner: false,
       
-      // Theme settings to maintain unified design system from original HTML
       theme: ThemeData(
         useMaterial3: true,
-        primaryColor: const Color(0xFF00979D), // Arduino Cyan Theme
+        primaryColor: const Color(0xFF00979D),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF00979D),
           primary: const Color(0xFF00979D),
-          secondary: const Color(0xFF10B981), // Emerald accent
-          background: const Color(0xFFF8FAFC), // slate-50
+          secondary: const Color(0xFF10B981),
+          background: const Color(0xFFF8FAFC),
         ),
         
-        // Premium modern system sans-serif typography (robust, high legibility, zero dynamic fetching bugs)
-        fontFamily: 'sans-serif',
+        fontFamily: 'Inter',
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFF1E293B)),
-          bodyMedium: TextStyle(color: Color(0xFF1E293B)),
+          bodyLarge: TextStyle(color: Color(0xFF1E293B), fontFamily: 'Inter'),
+          bodyMedium: TextStyle(color: Color(0xFF1E293B), fontFamily: 'Inter'),
         ),
         
-        // Customized controls theme
         switchTheme: SwitchThemeData(
           thumbColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
@@ -59,6 +57,16 @@ class SolarSoilApp extends StatelessWidget {
         ),
       ),
       home: const DashboardScreen(),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/garden/spinach') {
+          final gardenName = settings.arguments as String? ?? 'Spinach Garden';
+          return MaterialPageRoute(
+            builder: (_) => SpinachGardenDetailScreen(gardenName: gardenName),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(builder: (_) => const DashboardScreen());
+      },
     );
   }
 }
