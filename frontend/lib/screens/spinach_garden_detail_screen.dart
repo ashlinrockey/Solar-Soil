@@ -293,7 +293,10 @@ class _SpinachGardenDetailScreenState extends State<SpinachGardenDetailScreen> w
       double z2 = coord.y * math.sin(_angleX) + z1 * math.cos(_angleX);
       
       double distance = 400.0;
-      double scale = distance / (distance + z2);
+      double denom = distance + z2;
+      if (denom < 20.0) denom = 20.0;
+      double scale = distance / denom;
+      scale = scale.clamp(0.01, 20.0);
       
       double screenX = size.width / 2 + x1 * scale * zoom;
       double screenY = size.height / 2 + y2 * scale * zoom;
@@ -349,7 +352,7 @@ class _SpinachGardenDetailScreenState extends State<SpinachGardenDetailScreen> w
             themeColor = const Color(0xFF10B981);
           } else if (temp <= 32.0) {
             statusText = "Warning - Warming Trend";
-            themeColor = Colors.amber[700]!;
+            themeColor = const Color(0xFFFFA000);
           } else {
             statusText = "Warning - Heat Stress";
             themeColor = const Color(0xFFF43F5E);
@@ -369,7 +372,7 @@ class _SpinachGardenDetailScreenState extends State<SpinachGardenDetailScreen> w
           metricName = "Solar Intensity";
           currentValue = "${light.toStringAsFixed(0)} LUX";
           statusText = light >= 300.0 ? "Optimal PAR Sunlight" : "Low Photosynthesis Light";
-          themeColor = Colors.amber[600]!;
+          themeColor = const Color(0xFFFFB300);
           icon = Icons.wb_sunny_outlined;
           promptChips = ["Adjust Shade Nets", "Photosynthesis Factor"];
           break;
@@ -677,7 +680,8 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
           flex: 4,
           child: Column(
             children: [
-              Expanded(
+              SizedBox(
+                height: (MediaQuery.of(context).size.height * 0.35).clamp(250.0, 500.0),
                 child: _buildPlant3DViewer(soil, temp, humidity, light),
               ),
               const SizedBox(height: 8),
@@ -700,7 +704,7 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
                 status: temp < 18.0 ? "TOO COLD" : (temp <= 28.0 ? "OPTIMAL" : (temp <= 32.0 ? "WARMING" : "HEAT STRESS")),
                 statusColor: temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? Colors.amber : Colors.redAccent)),
                 icon: Icons.thermostat,
-                themeColor: temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? Colors.amber[700]! : const Color(0xFFF43F5E))),
+                themeColor: temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? const Color(0xFFFFA000) : const Color(0xFFF43F5E))),
                 description: "Leaf surface temperature from infrared stream. Ideal growth range is 18\u00B0C to 28\u00B0C.",
                 diagnose: temp > 30.0 ? "Recommend activating shade netting soon." : "Photosynthetic activity factor at maximum.",
               ),
@@ -710,9 +714,9 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
                 title: "Solar Intensity (LDR)",
                 value: "${light.toStringAsFixed(0)} LUX",
                 status: light >= 300.0 ? "SUNNY" : "LOW LIGHT",
-                statusColor: light >= 300.0 ? Colors.amber[700]! : Colors.blueGrey,
+                statusColor: light >= 300.0 ? const Color(0xFFFFA000) : Colors.blueGrey,
                 icon: Icons.wb_sunny_outlined,
-                themeColor: Colors.amber[600]!,
+                themeColor: const Color(0xFFFFB300),
                 description: "Incoming photosynthetically active radiation (PAR). Essential for chlorophyll activation.",
                 diagnose: "Panels generating ${provider.v.toStringAsFixed(1)}V from micro-node solar harvesting array.",
               ),
@@ -757,7 +761,7 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
           status: temp < 18.0 ? "TOO COLD" : (temp <= 28.0 ? "OPTIMAL" : (temp <= 32.0 ? "WARMING" : "HEAT STRESS")),
           statusColor: temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? Colors.amber : Colors.redAccent)),
           icon: Icons.thermostat,
-          themeColor: temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? Colors.amber[700]! : const Color(0xFFF43F5E))),
+          themeColor: temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? const Color(0xFFFFA000) : const Color(0xFFF43F5E))),
           description: "Leaf surface temperature from infrared stream. Ideal growth range is 18\u00B0C to 28\u00B0C.",
           diagnose: temp > 30.0 ? "Recommend activating shade netting soon." : "Photosynthetic activity factor at maximum.",
         ),
@@ -779,9 +783,9 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
           title: "Solar Intensity (LDR)",
           value: "${light.toStringAsFixed(0)} LUX",
           status: light >= 300.0 ? "SUNNY" : "LOW LIGHT",
-          statusColor: light >= 300.0 ? Colors.amber[700]! : Colors.blueGrey,
+          statusColor: light >= 300.0 ? const Color(0xFFFFA000) : Colors.blueGrey,
           icon: Icons.wb_sunny_outlined,
-          themeColor: Colors.amber[600]!,
+          themeColor: const Color(0xFFFFB300),
           description: "Incoming photosynthetically active radiation (PAR).",
           diagnose: "Panels generating ${provider.v.toStringAsFixed(1)}V.",
         ),
@@ -807,6 +811,9 @@ description: "Relative air humidity inside $_plantName microclimate zone.",
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
+        if (size.width <= 0 || size.height <= 0 || !size.width.isFinite || !size.height.isFinite) {
+          return const SizedBox.shrink();
+        }
         return GestureDetector(
           onTapUp: (details) => _handleTap(details, size),
           onPanDown: (d) {
@@ -1602,7 +1609,10 @@ class Plant3DPainter extends CustomPainter {
     
     // Perspective projection
     double distance = 400.0;
-    double scale = distance / (distance + z2);
+    double denom = distance + z2;
+    if (denom < 20.0) denom = 20.0;
+    double scale = distance / denom;
+    scale = scale.clamp(0.01, 20.0);
     
     // Responsive zoom scaling based on minDimension
     // When soil is hidden, zoom out to fit the full root system
@@ -1622,7 +1632,7 @@ class Plant3DPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Collect all elements to render
+    if (size.width <= 0 || size.height <= 0 || !size.width.isFinite || !size.height.isFinite) return;
     List<PaintElement> elements = [];
 
     // 1. Generate Glass Pot base/top ellipses
@@ -1789,8 +1799,10 @@ class Plant3DPainter extends CustomPainter {
   void _drawHolographicScanline(Canvas canvas, Size size) {
     final double scanY = size.height * scanProgress;
     
-    final scanPaint = Paint()
-      ..shader = LinearGradient(
+    final scanRect = Rect.fromLTWH(0, scanY - 15, size.width, 30);
+    final scanPaint = Paint()..strokeWidth = 2.0;
+    if (scanY.isFinite && size.width.isFinite) {
+      scanPaint.shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
@@ -1798,10 +1810,9 @@ class Plant3DPainter extends CustomPainter {
           const Color(0xFF00FFCC).withOpacity(0.4),
           const Color(0xFF00FFCC).withOpacity(0.0),
         ],
-      ).createShader(Rect.fromLTWH(0, scanY - 15, size.width, 30))
-      ..strokeWidth = 2.0;
-    
-    canvas.drawRect(Rect.fromLTWH(0, scanY - 15, size.width, 30), scanPaint);
+      ).createShader(scanRect);
+    }
+    canvas.drawRect(scanRect, scanPaint);
     
     final linePaint = Paint()
       ..color = const Color(0xFFE0F7FA)
@@ -1848,24 +1859,19 @@ class Plant3DPainter extends CustomPainter {
 
           // Draw Dark Brown Soil ellipse only when visible
           if (showSoil) {
-            final soilPaint = Paint()
-              ..shader = const LinearGradient(
-                colors: [Color(0xFF3E2723), Color(0xFF271A15)],
-              ).createShader(Rect.fromCenter(
-                center: topOffset,
-                width: 140.0 * topScale,
-                height: 40.0 * topScale,
-              ))
-              ..style = PaintingStyle.fill;
-              
-            canvas.drawOval(
-              Rect.fromCenter(
-                center: topOffset,
-                width: 140.0 * topScale,
-                height: 40.0 * topScale,
-              ),
-              soilPaint,
+            final soilRect = Rect.fromCenter(
+              center: topOffset,
+              width: 140.0 * topScale,
+              height: 40.0 * topScale,
             );
+            final soilPaint = Paint()..style = PaintingStyle.fill;
+            if (topOffset.dx.isFinite && topOffset.dy.isFinite &&
+                topScale.isFinite && topScale > 0) {
+              soilPaint.shader = const LinearGradient(
+                colors: [Color(0xFF3E2723), Color(0xFF271A15)],
+              ).createShader(soilRect);
+            }
+            canvas.drawOval(soilRect, soilPaint);
           } else {
             // Subterranean cross-section: show soil ring outline only
             final soilRingPaint = Paint()
@@ -2094,14 +2100,18 @@ class Plant3DPainter extends CustomPainter {
           depth: (proj1['depth'] + proj2['depth']) / 2,
           onPaint: (canvas) {
             final paint = Paint()
-              ..shader = const LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
-              ).createShader(Rect.fromPoints(proj1['offset'], proj2['offset']))
               ..strokeWidth = (7.0 - i * 0.8) * proj1['scale']
               ..strokeCap = StrokeCap.round
               ..style = PaintingStyle.stroke;
+            final o1 = proj1['offset'] as Offset;
+            final o2 = proj2['offset'] as Offset;
+            if (o1.dx.isFinite && o1.dy.isFinite && o2.dx.isFinite && o2.dy.isFinite) {
+              paint.shader = const LinearGradient(
+                colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+              ).createShader(Rect.fromPoints(o1, o2));
+            }
 
-            canvas.drawLine(proj1['offset'], proj2['offset'], paint);
+            canvas.drawLine(o1, o2, paint);
           },
         ),
       );
@@ -2235,13 +2245,14 @@ class Plant3DPainter extends CustomPainter {
             final Color stressColor = _heatColor(leafHealth);
             final Color darkStress = Color.lerp(stressColor, const Color(0xFF1B5E20), 0.3)!;
 
-            final leafPaint = Paint()
-              ..shader = LinearGradient(
-                colors: isHighlighted 
-                  ? [stressColor, darkStress]
-                  : [stressColor, darkStress],
-              ).createShader(Rect.fromPoints(baseProj['offset'], tipProj['offset']))
-              ..style = PaintingStyle.fill;
+            final leafPaint = Paint()..style = PaintingStyle.fill;
+            final bp = baseProj['offset'] as Offset;
+            final tp = tipProj['offset'] as Offset;
+            if (bp.dx.isFinite && bp.dy.isFinite && tp.dx.isFinite && tp.dy.isFinite) {
+              leafPaint.shader = LinearGradient(
+                colors: [stressColor, darkStress],
+              ).createShader(Rect.fromPoints(bp, tp));
+            }
 
             final borderPaint = Paint()
               ..color = isHighlighted ? const Color(0xFF00979D) : stressColor.withValues(alpha: 0.6)
@@ -2302,7 +2313,7 @@ class Plant3DPainter extends CustomPainter {
         'index': 1,
         'coord': Vector3D(70, -10, 45), // Leaf 2 tip
         'label': 'Temp: ${temp.toStringAsFixed(1)}\u00B0C',
-        'color': temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? Colors.amber[700]! : const Color(0xFFF43F5E))),
+        'color': temp < 18.0 ? const Color(0xFF3B82F6) : (temp <= 28.0 ? const Color(0xFF10B981) : (temp <= 32.0 ? const Color(0xFFFFA000) : const Color(0xFFF43F5E))),
         'verticalOffset': -10.0,
       },
       {
@@ -2316,7 +2327,7 @@ class Plant3DPainter extends CustomPainter {
         'index': 3,
         'coord': Vector3D(0, -170, 0), // Leaf 5 tip
         'label': 'Light: ${light.toStringAsFixed(0)} LUX',
-        'color': Colors.amber[600]!,
+        'color': const Color(0xFFFFB300),
         'verticalOffset': -40.0,
       },
     ];

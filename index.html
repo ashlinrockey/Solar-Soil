@@ -9,7 +9,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <meta name="csrf-token" content="">
     <style>
         @keyframes float {
             0%, 100% { transform: translateY(0); }
@@ -302,12 +301,6 @@
             loginBtnText.classList.toggle('hidden', loading);
             loginSpinner.classList.toggle('hidden', !loading);
         }
-        function getCsrfToken() {
-            const match = document.cookie.match(/(?:^| )csrf_token=([^;]+)/);
-            const token = match ? decodeURIComponent(match[1]) : '';
-            document.querySelector('meta[name="csrf-token"]').setAttribute('content', token);
-            return token;
-        }
 
         let loginInProgress = false;
 
@@ -326,7 +319,6 @@
 
             const username = emailInput.value.trim();
             const password = passwordInput.value;
-            const rememberMe = document.getElementById('remember-me').checked;
 
             if (!username) { showError('Please enter your email or username.'); return; }
             if (!password) { showError('Please enter your password.'); return; }
@@ -337,18 +329,13 @@
             try {
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),
                 });
                 const data = await res.json();
                 if (data.success) {
                     const uname = (data.user?.username) || username;
-                    const sessionData = { username: uname, timestamp: Date.now() };
-                    if (rememberMe) {
-                        localStorage.setItem('solarsoil_session', JSON.stringify(sessionData));
-                    } else {
-                        sessionStorage.setItem('solarsoil_session', JSON.stringify(sessionData));
-                    }
+                    sessionStorage.setItem('solarsoil_username', uname);
                     window.location.href = '/dashboard?username=' + encodeURIComponent(uname);
                 } else {
                     showError(data.message || 'Invalid username or password.');
@@ -366,19 +353,6 @@
             e.preventDefault();
             handleLogin();
         });
-
-        // Auto-restore session on page load
-        (function restoreSession() {
-            const stored = localStorage.getItem('solarsoil_session') || sessionStorage.getItem('solarsoil_session');
-            if (stored) {
-                try {
-                    const session = JSON.parse(stored);
-                    if (session && session.username) {
-                        window.location.href = '/dashboard?username=' + encodeURIComponent(session.username);
-                    }
-                } catch (_) {}
-            }
-        })();
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') hideError();

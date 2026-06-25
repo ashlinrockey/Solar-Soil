@@ -7,9 +7,8 @@ import FileSync from 'lowdb/adapters/FileSync.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Use DATA_DIR env var (container volume mount) or fall back to __dirname
-const dataDir = process.env.DATA_DIR || __dirname;
-const adapter = new FileSync(join(dataDir, 'users.db.json'));
+// Use a JSON file as the database — stored next to server.js
+const adapter = new FileSync(join(__dirname, 'users.db.json'));
 const db = low(adapter);
 
 // Set default structure

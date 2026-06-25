@@ -1086,7 +1086,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         provider.addTerminalLog("GARDEN CARD: Navigation triggered via MaterialPageRoute");
         Navigator.of(context).push(MaterialPageRoute(
           builder: (context) => SpinachGardenDetailScreen(gardenName: _gardenName),
-          settings: const RouteSettings(name: '/garden/spinach'),
+          settings: RouteSettings(name: '/garden/${_gardenName.toLowerCase().replaceAll(' ', '-')}'),
         ));
       },
       child: GlassCard(
