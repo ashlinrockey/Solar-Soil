@@ -207,4 +207,8 @@ Fork → branch → commit → PR. All sensor protocols, UI enhancements, and AI
 
 ## 📄 License
 
-Academic / Educational — College Project, May 2026.
+**Solar Soil IoT Dashboard** — Developed by **Ashlin Rockey**  
+IoT & Precision Agriculture Project — **West Saxon University of Zwickau (WHZ)** — May 2026
+
+*Built with curiosity, caffeine, and the conviction that the future of food grows on code.*  
+*Open-source for academic and educational purposes.* 🌱☀️
