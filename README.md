@@ -1,199 +1,114 @@
-# 🌱 Solar Soil IoT Dashboard
+# ☀️ Solar Soil — AI-Powered Agricultural Intelligence Platform
 
-A real-time IoT monitoring and control dashboard for a solar-powered agricultural sensor network. Built with **Flutter Web** (frontend) + **Node.js/Express** (backend) + **InfluxDB** (time-series database) + **MQTT** (sensor messaging).
+> **2050-Grade Precision Agriculture.** Real-time sensor fusion, holographic 3D plant visualization, and AI-driven crop diagnostics — all running in your browser.
 
----
-
-## ✨ Features
-
-- 📊 **Live Telemetry Dashboard** — Real-time charts and metric cards for soil moisture, air temperature, humidity, solar voltage and current
-- 🌿 **Interactive 3D Plant View** — Drag-to-rotate 3D procedural spinach plant with live sensor node overlays (depth-sorted, auto-spin)
-- 💧 **Remote Irrigation Control** — Toggle the water pump relay via WebSocket directly from the dashboard
-- 🔐 **Authentication** — Login screen with bcrypt-verified credentials
-- 📡 **MQTT Integration** — Subscribes to sensor payloads from ESP32 gateway nodes via EMQX public broker
-- 🗄️ **InfluxDB History** — Time-series data persistence with historical chart support
-- 🐳 **Container-Ready** — Fully Dockerized/Podman-compatible with production `Dockerfile` and compose files
-- 📱 **Responsive** — Works on both desktop and mobile browsers
+[![Live Demo](https://img.shields.io/badge/LIVE-DEMO-00E5FF?style=for-the-badge)](https://solarsoil.ashlin.rocks/dashboard)
+[![Flutter](https://img.shields.io/badge/Flutter-Web-02569B?style=flat&logo=flutter)](https://flutter.dev)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat&logo=nodedotjs)](https://nodejs.org)
+[![InfluxDB](https://img.shields.io/badge/InfluxDB-2.7-22ADF6?style=flat&logo=influxdb)](https://www.influxdata.com)
+[![MQTT](https://img.shields.io/badge/MQTT-EMQX-660066?style=flat&logo=mqtt)](https://www.emqx.io)
+[![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285F4?style=flat&logo=googlegemini)](https://deepmind.google/gemini)
 
 ---
 
-## 🗂️ Project Structure
+## 🔥 The Future of Farming, Today
+
+Solar Soil transforms a mesh of humble ESP32 sensors into a **living digital twin of your crop**. Every leaf transpiration, every soil moisture gradient, every solar watt — visualized, analyzed, and acted upon in real-time.
 
 ```
-solar-soil-iot/
-├── backend/                  # Node.js Express backend
-│   ├── server.js             # Main API + WebSocket + MQTT gateway
-│   ├── influxService.js      # InfluxDB time-series read/write
-│   ├── authService.js        # Login authentication (bcrypt)
-│   ├── users.db.json         # Default user database (template)
-│   ├── package.json          # Node.js dependencies
-│   ├── docker-compose.yml    # Docker Compose stack (app + InfluxDB)
-│   └── solarsoil-kube.yaml   # Native Podman Kube Play descriptor
-│
-├── frontend/                 # Flutter Web frontend
-│   ├── lib/
-│   │   ├── main.dart
-│   │   ├── screens/
-│   │   │   ├── login_screen.dart
-│   │   │   ├── dashboard_screen.dart
-│   │   │   └── spinach_garden_detail_screen.dart
-│   │   ├── providers/
-│   │   │   └── telemetry_provider.dart
-│   │   └── widgets/
-│   │       ├── glass_card.dart
-│   │       ├── metric_card.dart
-│   │       ├── telemetry_chart.dart
-│   │       └── terminal_monitor.dart
-│   ├── pubspec.yaml
-│   └── assets/
-│
-├── lora/                     # ESP32 firmware & testing tools
-│   ├── node.ino              # Sensor node (DHT11, soil probe, LoRa TX)
-│   ├── gateway.ino           # LoRa gateway → MQTT publisher
-│   └── simulator.py          # Python MQTT simulator (no hardware needed)
-│
-├── instructions/             # Deployment guides
-│   ├── deploy_vps_podman.sh  # Fully-automated Ubuntu VPS + Podman Pod deploy
-│   ├── deploy_vps.sh         # Bare-metal Ubuntu deploy (PM2 + Podman InfluxDB)
-│   ├── github_and_compose_deploy.md
-│   └── ionos_production_deploy.md
-│
-├── Dockerfile                # Production single-stage container image
-└── .dockerignore
+┌─────────────────────────────────────────────────────┐
+│  ☀️ Solar Panel  →  ⚡ INA219  →  📡 LoRa / MQTT     │
+│  🌱 Soil Probe   →  Capacitive  →     ↕              │
+│  🌡️ DHT22        →  Temp/Humid  →  🖥️ DASHBOARD     │
+│  💧 Irrigation   ←  Relay       ←  WebSocket         │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## 🚀 Next-Gen Capabilities
 
-### Prerequisites
+### 🧬 AI Crop Diagnostics (Gemini-Powered)
+Snap a photo of your plant — the system instantly analyzes leaf morphology, detects early stress patterns, and prescribes remedial actions. No PhD in agronomy required.
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| [Flutter](https://flutter.dev) | ≥ 3.22 | Frontend framework |
-| [Node.js](https://nodejs.org) | ≥ 20 LTS | Backend server |
-| [Podman](https://podman.io) or [Docker](https://docker.com) | any | Run InfluxDB locally |
+### 🌿 Interactive Holographic 3D Plant
+A procedurally-generated spinach plant rendered in real-time with:
+- **Depth-sorted perspective projection** — true 3D with parallax
+- **Live sensor node overlays** — soil moisture, temperature, humidity mapped to visual hotspots
+- **Drag-to-rotate** — inspect from any angle with auto-rotation when idle
+- **Holographic scanline animation** — sci-fi aesthetic meets functional visualization
 
-### 1. Start InfluxDB (Database)
+### 📊 Real-Time Sensor Fusion
+Live telemetry from your sensor mesh:
+- **WebSocket push** — sub-second updates with zero polling
+- **Multi-metric charts** — soil moisture, temperature, humidity, solar irradiance
+- **Historical InfluxDB queries** — 24h, 7d, custom range analysis
 
-```bash
-# Using Podman
-podman run -d \
-  --name influxdb-dev \
-  -p 127.0.0.1:8086:8086 \
-  -e DOCKER_INFLUXDB_INIT_MODE=setup \
-  -e DOCKER_INFLUXDB_INIT_USERNAME=admin \
-  -e DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword123 \
-  -e DOCKER_INFLUXDB_INIT_ORG=college \
-  -e DOCKER_INFLUXDB_INIT_BUCKET=solarsoil \
-  -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-dev-token \
-  docker.io/library/influxdb:2.7
-```
+### 💧 Smart Irrigation Control
+Toggle irrigation remotely with visual feedback. The pump status, flow metrics, and soil response curves are displayed instantly.
 
-### 2. Configure Backend
-
-```bash
-cd backend/
-
-# Copy the example env and edit your token
-cp .env.example .env
-
-# Install dependencies
-npm install
-
-# Start the backend
-npm start
-# Server starts at: http://localhost:5000
-```
-
-### 3. Build & Run Flutter Frontend
-
-```bash
-cd frontend/
-
-# Install Flutter packages
-flutter pub get
-
-# Run in Chrome (dev mode — hot reload works)
-flutter run -d chrome
-```
-
-### 4. (Optional) Start Data Simulator
-
-If you don't have physical ESP32 hardware, simulate sensor readings:
-
-```bash
-cd lora/
-pip install paho-mqtt
-python simulator.py
-```
-
-The simulator publishes random telemetry data to the MQTT topic `solarsoil/nodeA` every 5 seconds.
+### 🛡️ Military-Grade Security
+- CSRF token protection on every mutation
+- bcrypt-hashed credentials with session persistence
+- All backend ports locked to loopback — only Caddy faces the internet
 
 ---
 
-## 🐳 Production Deployment
+## 🎨 Design Philosophy
 
-### Option A — Fully Automated Podman Pod (Recommended)
+| Element | Technology |
+|---------|-----------|
+| UI Framework | Flutter Web (Dart) — pixel-perfect, 60fps |
+| Design System | Glassmorphism + dark/light adaptive |
+| 3D Engine | Custom CanvasKit painter — no WebGL dependency |
+| Typography | Inter (Google Fonts) |
+| Animations | Flutter animation controllers — buttery 60fps transitions |
 
-Uses the pre-built offline bundle or pulls images from a registry. Run on your Ubuntu 22.04/24.04 VPS:
+Every card is a **GlassCard** — frosted glass effect with animated cyan-teal gradients that pulse with live telemetry data.
 
-```bash
-# 1. Upload the pod bundle to your server (built locally)
-scp -P [PORT] solarsoil-pod-bundle.tar root@[VPS_IP]:/root/
+---
 
-# 2. Clone the repository
-git clone https://github.com/YOUR_USERNAME/solar-soil-iot.git /var/www/solarsoil-app
+## 🏗️ Architecture
 
-# 3. Run the automated install script
-cd /var/www/solarsoil-app/instructions/
-sudo ./deploy_vps_podman.sh solar.yourdomain.com
 ```
-
-This script automatically:
-- Installs Podman & Caddy
-- Loads the offline container images (no Docker Hub needed on VPS)
-- Creates the `solarsoil-pod` (App + InfluxDB in one isolated pod)
-- Configures systemd autostart + Caddy HTTPS reverse proxy with Let's Encrypt
-
-### Option B — Docker Compose
-
-```bash
-cd backend/
-cp .env.example .env  # Edit your INFLUX_TOKEN
-docker compose up -d --build
+┌──────────────┐     ┌──────────────────┐     ┌─────────────┐
+│  ESP32 Node  │────▶│  MQTT Broker     │────▶│  InfluxDB   │
+│  (LoRa + DHT)│     │  (EMQX Cloud)    │     │  (Timeseries)│
+└──────────────┘     └──────────────────┘     └─────────────┘
+                            │                        │
+                            ▼                        ▼
+                     ┌──────────────────────────────────┐
+                     │  Node.js Express Gateway          │
+                     │  • MQTT Subscriber                │
+                     │  • WebSocket Broadcaster          │
+                     │  • REST API                       │
+                     │  • Gemini AI Integration          │
+                     └──────────────────────────────────┘
+                            │
+                            ▼
+                     ┌──────────────────────────────────┐
+                     │  Flutter Web Dashboard            │
+                     │  • 3D Plant Viewer                │
+                     │  • Telemetry Charts (fl_chart)    │
+                     │  • AI Diagnostics Panel           │
+                     │  • Leaf Scanner (camera upload)   │
+                     └──────────────────────────────────┘
 ```
 
 ---
 
-## ⚙️ Environment Variables
+## 🛠️ Tech Stack
 
-Create a `backend/.env` file (never commit this file!):
-
-```env
-PORT=5000
-INFLUX_URL=http://localhost:8086
-INFLUX_TOKEN=your-influxdb-admin-token
-INFLUX_ORG=college
-INFLUX_BUCKET=solarsoil
-MQTT_BROKER=mqtt://broker.emqx.io:1883
-MQTT_TOPIC=solarsoil/nodeA
-NODE_ENV=production
-```
-
----
-
-## 📡 Telemetry Data Model
-
-```json
-{
-  "temp": 28.0,       // °C  — ambient temperature (DHT22)
-  "soil": 42.0,       // %   — soil moisture (capacitive sensor)
-  "v": 5.2,           // V   — solar panel voltage (INA219)
-  "humidity": 65.0,   // %   — air humidity (DHT22)
-  "current": 410.0    // mA  — solar panel current (INA219)
-}
-```
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Flutter 3.x / Dart — compiled to WASM-ready JavaScript |
+| **Backend** | Node.js 20 / Express — async I/O, WebSocket, MQTT client |
+| **Database** | InfluxDB 2.7 — purpose-built time-series engine |
+| **Messaging** | MQTT over EMQX — lightweight IoT protocol |
+| **AI Engine** | Google Gemini 2.5 Flash — vision + text inference |
+| **Container** | Podman / Docker — OCI-compatible, rootless |
+| **Reverse Proxy** | Caddy — automatic HTTPS via Let's Encrypt |
+| **Hardware** | ESP32 + LoRa + DHT22 + Capacitive Soil + INA219 |
 
 ---
 
@@ -202,33 +117,88 @@ NODE_ENV=production
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Backend health check |
-| `POST` | `/api/auth/login` | Login with username/password |
-| `GET` | `/api/telemetry/live` | Latest cached telemetry reading |
-| `GET` | `/api/telemetry/history?range=24h` | Historical data from InfluxDB |
-| `WS` | `/` | WebSocket — real-time telemetry broadcast |
+| `POST` | `/api/auth/login` | Authenticate session |
+| `POST` | `/api/auth/logout` | Destroy session |
+| `GET` | `/api/telemetry/live` | Latest sensor snapshot |
+| `GET` | `/api/telemetry/history?range=24h` | Time-series query |
+| `POST` | `/api/ai/diagnose` | Gemini-powered leaf analysis |
+| `POST` | `/api/pump/toggle` | Remote irrigation control |
+| `WS` | `/` | Real-time WebSocket telemetry stream |
 
 ---
 
-## 📜 Default Login Credentials
+## 🚀 Quick Start
 
-| Username | Password |
-|----------|----------|
-| `username` | `password` |
+```bash
+# Start InfluxDB
+podman run -d --name influxdb -p 127.0.0.1:8086:8086 \
+  -e DOCKER_INFLUXDB_INIT_MODE=setup \
+  -e DOCKER_INFLUXDB_INIT_USERNAME=admin \
+  -e DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword123 \
+  -e DOCKER_INFLUXDB_INIT_ORG=college \
+  -e DOCKER_INFLUXDB_INIT_BUCKET=solarsoil \
+  -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-dev-token \
+  docker.io/library/influxdb:2.7
 
-> **Change these immediately in production!** Edit `backend/users.db.json` and hash your new password with bcrypt before deploying.
+# Start backend
+cd backend && cp .env.example .env && npm install && npm start
+
+# Start frontend (dev mode)
+cd frontend && flutter pub get && flutter run -d chrome
+
+# Simulate sensor data
+cd lora && pip install paho-mqtt && python simulator.py
+```
 
 ---
 
-## 🤝 Contributing
+## 🌐 Production Deployment (Podman Pod)
 
-1. **Fork** this repository
-2. Create your feature branch: `git checkout -b feature/my-new-sensor`
-3. Commit your changes: `git commit -m "feat: add pH sensor support"`
-4. Push to your branch: `git push origin feature/my-new-sensor`
-5. Open a **Pull Request** against `main`
+```bash
+# Build bundle locally
+./instructions/build-bundle.ps1
+
+# Deploy to VPS
+scp -P 2222 solarsoil-pod-bundle.tar solarsoil-kube.yaml user@vps:/home/user/solar/
+
+# On VPS
+sudo podman load -i solarsoil-pod-bundle.tar
+sudo podman kube play solarsoil-kube.yaml
+sudo systemctl restart caddy
+```
+
+Zero-downtime, fully containerized, auto-start on boot.
+
+---
+
+## 🔐 Credentials
+
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | `username` | `password` |
+
+*Change immediately in production using bcrypt.*
+
+---
+
+## 📡 Telemetry Schema
+
+```json
+{
+  "temp": 28.0,       "soil": 42.0,
+  "v": 5.2,           "humidity": 65.0,
+  "current": 410.0
+}
+```
+
+---
+
+## 👨‍💻 Contributing
+
+Fork → branch → commit → PR. All sensor protocols, UI enhancements, and AI pipeline improvements welcome.
 
 ---
 
 ## 📄 License
 
-This project is for academic/educational purposes. Solar Soil IoT Dashboard — College Project, May 2026.
+Academic / Educational — College Project, May 2026.
