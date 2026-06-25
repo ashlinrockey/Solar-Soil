@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:js' as js;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import '../providers/telemetry_provider.dart';
+import 'speech_helper.dart';
 
 class RootWiseAssistantSheet extends StatefulWidget {
   final String gardenName;
@@ -40,46 +40,19 @@ class _RootWiseAssistantSheetState extends State<RootWiseAssistantSheet> {
   }
 
   void _startSpeechToText(TelemetryProvider provider) async {
-    try {
-      final supported = js.context.callMethod('eval', ['''
-        !!(window.SpeechRecognition || window.webkitSpeechRecognition)
-      ''']);
-      if (supported != true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Speech not supported in this browser"), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
-          );
-        }
-        return;
+    if (!isSpeechSupported()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Speech not supported in this browser"), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
+        );
       }
-      setState(() => _isListening = true);
-      js.context.callMethod('eval', ['''
-        (function() {
-          var sr = window.SpeechRecognition || window.webkitSpeechRecognition;
-          var r = new sr();
-          r.lang = 'en-US';
-          r.interimResults = false;
-          r.continuous = false;
-          r.onresult = function(e) {
-            window._srResult = e.results[e.results.length - 1][0].transcript;
-          };
-          r.onerror = function() { window._srResult = ''; };
-          r.onend = function() { window._srDone = true; };
-          r.start();
-        })()
-      ''']);
-      while (true) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        if (js.context['_srDone'] == true) {
-          final transcript = js.context['_srResult'] as String? ?? '';
-          js.context.callMethod('eval', ['delete window._srResult; delete window._srDone;']);
-          if (transcript.isNotEmpty) {
-            _chatInputController.text = transcript;
-          }
-          break;
-        }
-      }
-    } catch (_) {}
+      return;
+    }
+    setState(() => _isListening = true);
+    final transcript = await startSpeechRecognition();
+    if (transcript.isNotEmpty) {
+      _chatInputController.text = transcript;
+    }
     if (mounted) setState(() => _isListening = false);
   }
 

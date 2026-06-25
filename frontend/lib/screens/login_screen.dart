@@ -1,24 +1,10 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'dart:convert';
-import 'dart:js' as js;
 import '../providers/telemetry_provider.dart';
+import '../providers/csrf_helper.dart';
 import 'dashboard_screen.dart';
-
-String _csrfToken() {
-  if (!kIsWeb) return '';
-  try {
-    final doc = js.context['document'];
-    if (doc == null) return '';
-    final cookie = doc['cookie'] as String? ?? '';
-    final match = RegExp(r'(?:^| )csrf_token=([^;]+)').firstMatch(cookie);
-    return match?.group(1) ?? '';
-  } catch (_) {
-    return '';
-  }
-}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -86,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final String baseUrl = kIsWeb ? '' : 'https://solarsoil.ashlin.rocks';
       final response = await http.post(
         Uri.parse('$baseUrl/api/auth/login'),
-        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': _csrfToken()},
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken()},
         body: jsonEncode({
           'username': _emailController.text.trim(),
           'password': _passwordController.text,

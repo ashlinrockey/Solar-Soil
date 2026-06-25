@@ -1,25 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:js' as js;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'csrf_helper.dart';
 
-String _csrfToken() {
-  if (!kIsWeb) return '';
-  try {
-    final doc = js.context['document'];
-    if (doc == null) return '';
-    final cookie = doc['cookie'] as String? ?? '';
-    final match = RegExp(r'(?:^| )csrf_token=([^;]+)').firstMatch(cookie);
-    return match?.group(1) ?? '';
-  } catch (_) {
-    return '';
-  }
-}
-
-Map<String, String> _csrfHeaders() => {'X-CSRF-Token': _csrfToken()};
+Map<String, String> _csrfHeaders() => {'X-CSRF-Token': csrfToken()};
 
 class TelemetryReading {
   final double temp;
