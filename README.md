@@ -133,6 +133,16 @@ Every card is a **GlassCard** — frosted glass effect with animated cyan-teal g
 
 ---
 
+---
+
+## 🐳 Podman Build Details
+
+Full end-to-end build pipeline, bundle contents, VPS deployment, frontend-only hot-redeploy, and pod architecture documented in:
+
+➡️ **[PODMAN_BUILD.md](PODMAN_BUILD.md)**
+
+---
+
 ## 🚀 Quick Start
 
 ```bash
