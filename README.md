@@ -7,7 +7,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat&logo=nodedotjs)](https://nodejs.org)
 [![InfluxDB](https://img.shields.io/badge/InfluxDB-2.7-22ADF6?style=flat&logo=influxdb)](https://www.influxdata.com)
 [![MQTT](https://img.shields.io/badge/MQTT-EMQX-660066?style=flat&logo=mqtt)](https://www.emqx.io)
-[![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285F4?style=flat&logo=googlegemini)](https://deepmind.google/gemini)
+[![AI](https://img.shields.io/badge/AI-Gemini_•_OpenRouter_•_Ollama-4285F4?style=flat&logo=googlegemini)](https://deepmind.google/gemini)
 
 ---
 
@@ -28,8 +28,14 @@ Solar Soil transforms a mesh of humble ESP32 sensors into a **living digital twi
 
 ## 🚀 Next-Gen Capabilities
 
-### 🧬 AI Crop Diagnostics (Gemini-Powered)
+### 🧬 Multi-Provider AI Crop Diagnostics
 Snap a photo of your plant — the system instantly analyzes leaf morphology, detects early stress patterns, and prescribes remedial actions. No PhD in agronomy required.
+
+**Choose your AI engine:**
+- ☁️ **Google Gemini 2.5 Flash** — cloud vision API, zero setup
+- 🌐 **OpenRouter** — unified gateway to 200+ models (Claude, GPT, Gemini, etc.)
+- 🏠 **Ollama** — fully local, run Llama 3 / Mistral on your own hardware
+- 🔌 **NVIDIA NVCF** — enterprise-grade inference
 
 ### 🌿 Interactive Holographic 3D Plant
 A procedurally-generated spinach plant rendered in real-time with:
@@ -105,7 +111,7 @@ Every card is a **GlassCard** — frosted glass effect with animated cyan-teal g
 | **Backend** | Node.js 20 / Express — async I/O, WebSocket, MQTT client |
 | **Database** | InfluxDB 2.7 — purpose-built time-series engine |
 | **Messaging** | MQTT over EMQX — lightweight IoT protocol |
-| **AI Engine** | Google Gemini 2.5 Flash — vision + text inference |
+| **AI Engine** | Gemini 2.5 Flash / OpenRouter / Ollama / NVIDIA — switchable at runtime |
 | **Container** | Podman / Docker — OCI-compatible, rootless |
 | **Reverse Proxy** | Caddy — automatic HTTPS via Let's Encrypt |
 | **Hardware** | ESP32 + LoRa + DHT22 + Capacitive Soil + INA219 |
