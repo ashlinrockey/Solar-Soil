@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import '../widgets/metric_card.dart';
 import '../widgets/rootwise_assistant_sheet.dart';
 import '../widgets/telemetry_chart.dart';
 import '../widgets/terminal_monitor.dart';
+import '../widgets/sensor_map_view.dart';
 import '../utils/redirect.dart';
 import 'login_screen.dart';
 import 'spinach_garden_detail_screen.dart';
@@ -36,7 +38,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   String _zoneId = "PL-02J";
   String _coverageArea = "200 m²";
   bool _gardenConfigLoaded = false;
-  bool _editClicked = false; // tracks if edit button was just tapped
+  bool _editClicked = false;
+
+  // Map sensor nodes
+  List<SensorNode> _sensorNodes = [];
+  double _gardenLat = 50.717;
+  double _gardenLng = 12.495;
 
   // Notifications
   final List<Map<String, String>> _notifications = [
@@ -1072,6 +1079,30 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           _gardenNumber = cfg['number'] ?? '08';
           _zoneId = cfg['zoneId'] ?? 'PL-02J';
           _coverageArea = cfg['coverage'] ?? '200 m²';
+          _gardenLat = (cfg['latitude'] as num?)?.toDouble() ?? 50.717;
+          _gardenLng = (cfg['longitude'] as num?)?.toDouble() ?? 12.495;
+          final rawNodes = cfg['nodes'] as List<dynamic>? ?? [];
+          final rng = math.Random(42);
+          _sensorNodes = rawNodes.map((n) {
+            final id = n['id'] as String? ?? '';
+            final trendData = List.generate(24, (i) {
+              final base = id == 'nodeA' ? provider.soil : (id == 'nodeB' ? provider.temp : provider.humidity);
+              return FlSpot(i.toDouble(), base + (rng.nextDouble() - 0.5) * 10);
+            });
+            return SensorNode(
+              id: id,
+              name: n['name'] as String? ?? id,
+              position: LatLng(
+                (n['latitude'] as num?)?.toDouble() ?? _gardenLat,
+                (n['longitude'] as num?)?.toDouble() ?? _gardenLng,
+              ),
+              soilMoisture: provider.soil + (rng.nextDouble() - 0.5) * 10,
+              temperature: provider.temp + (rng.nextDouble() - 0.5) * 4,
+              solarVoltage: provider.v + (rng.nextDouble() - 0.5) * 0.5,
+              status: n['status'] as String? ?? 'optimal',
+              trendData: trendData,
+            );
+          }).toList();
           _gardenConfigLoaded = true;
         });
       });
@@ -2237,6 +2268,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
         // Grid of 4 Key Indicators
         _buildMetricsGrid(provider, isDesktop),
+
+        if (_gardenConfigLoaded) ...[
+          const SizedBox(height: 24),
+          SizedBox(
+            height: isDesktop ? 420 : 320,
+            child: SensorMapView(
+              nodes: _sensorNodes,
+              defaultLat: _gardenLat,
+              defaultLng: _gardenLng,
+            ),
+          ),
+        ],
 
         const SizedBox(height: 24),
 
